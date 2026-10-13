@@ -23,4 +23,4 @@ pm2 save
 echo "==> Tayyor"
 PORT=$(grep -E '^PORT=' server/.env | cut -d= -f2 | tr -d '"\r')
 sleep 2
-curl -fsS "http://127.0.0.1:${PORT:-4000}/api/health" && echo || { echo "API javob bermadi:"; pm2 logs idu-planning-api --lines 15 --nostream; exit 1; }
+curl -fsS "http://127.0.0.1:${PORT:-4010}/api/health" && echo || { echo "API javob bermadi:"; pm2 logs idu-planning-api --lines 15 --nostream; exit 1; }

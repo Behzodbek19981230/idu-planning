@@ -4,7 +4,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 export const config = {
   isProduction,
-  port: Number(process.env.PORT) || 4000,
+  port: Number(process.env.PORT) || 4010,
   // Production'da faqat 127.0.0.1 — tashqaridan nginx orqali kiriladi
   host: process.env.HOST || (isProduction ? '127.0.0.1' : '0.0.0.0'),
   // Frontend domen(lar)i, vergul bilan: https://idu-schedule.universal-uz.uz

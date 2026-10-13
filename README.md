@@ -27,7 +27,7 @@ cp client/.env.example client/.env      # ixtiyoriy: semestr boshlanish sanasi (
 # 3. Baza (PostgreSQL'da bo'sh baza yaratilgan bo'lishi kerak)
 npm run db:migrate
 
-# 4. Dev rejim: API :4000, web :5173
+# 4. Dev rejim: API :4010, web :5173
 npm run dev
 ```
 

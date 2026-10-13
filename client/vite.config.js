@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // telefondan tarmoq orqali ochish uchun
-    proxy: { '/api': process.env.API_URL || 'http://localhost:4000' },
+    proxy: { '/api': process.env.API_URL || 'http://localhost:4010' },
   },
   build: {
     chunkSizeWarningLimit: 1500, // antd alohida chunk'da
