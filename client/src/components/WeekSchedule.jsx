@@ -1,15 +1,13 @@
-import { CalendarX } from 'lucide-react';
+import { Col, Flex, Row, Tag, Typography, theme } from 'antd';
 import LessonCard from './LessonCard.jsx';
 import { EmptyState } from './ui.jsx';
 import { DAYS, groupByDay, isoDay } from '../lib/schedule.js';
 
 export default function WeekSchedule({ lessons, showTeacher = false }) {
+  const { token } = theme.useToken();
+
   if (!lessons.length) {
-    return (
-      <EmptyState icon={CalendarX} title="Darslar topilmadi">
-        Jadval hali yuklanmagan bo'lishi mumkin.
-      </EmptyState>
-    );
+    return <EmptyState title="Darslar topilmadi">Jadval hali yuklanmagan bo'lishi mumkin.</EmptyState>;
   }
 
   const byDay = groupByDay(lessons);
@@ -17,32 +15,42 @@ export default function WeekSchedule({ lessons, showTeacher = false }) {
   const days = DAYS.filter((d) => d.n <= 6 || byDay.get(d.n).length);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <Row gutter={[24, 24]}>
       {days.map((d) => {
         const items = byDay.get(d.n);
         return (
-          <section key={d.n} id={`day-${d.n}`} className="scroll-mt-20">
-            <h2 className="mb-2.5 flex items-center gap-2 font-semibold">
-              {d.name}
-              {d.n === today && <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white">Bugun</span>}
-              <span className="ml-auto text-sm font-normal text-slate-500">
+          <Col key={d.n} xs={24} lg={12}>
+            <Flex align="center" gap={8} style={{ marginBottom: 10 }}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                {d.name}
+              </Typography.Title>
+              {d.n === today && <Tag color="processing">Bugun</Tag>}
+              <Typography.Text type="secondary" style={{ marginLeft: 'auto' }}>
                 {items.length ? `${items.length} ta dars` : "Dars yo'q"}
-              </span>
-            </h2>
+              </Typography.Text>
+            </Flex>
             {items.length ? (
-              <div className="space-y-3">
+              <Flex vertical gap={12}>
                 {items.map((l) => (
                   <LessonCard key={l.id} lesson={l} showTeacher={showTeacher} />
                 ))}
-              </div>
+              </Flex>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400">
+              <div
+                style={{
+                  border: `1px dashed ${token.colorBorder}`,
+                  borderRadius: token.borderRadiusLG,
+                  padding: 20,
+                  textAlign: 'center',
+                  color: token.colorTextQuaternary,
+                }}
+              >
                 Bo'sh kun
               </div>
             )}
-          </section>
+          </Col>
         );
       })}
-    </div>
+    </Row>
   );
 }

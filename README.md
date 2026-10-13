@@ -4,13 +4,14 @@ O'qituvchilar o'z darslarining kuni, vaqti va joyini telefon yoki kompyuterdan k
 
 - **Admin** Excel (.xlsx) faylidan dars jadvalini yuklaydi, o'qituvchilarga login/parol beradi.
 - **O'qituvchi** login qilib, bugungi va haftalik darslarini ko'radi (hozirgi / keyingi dars, qolgan vaqt, xona, bino, guruh).
+- Interfeys Ant Design asosida, telefon va kompyuterga moslashgan; **yorug' / qorong'i / tizim** mavzusi sarlavhadagi tugma yoki Profil sahifasidan tanlanadi.
 
 ## Texnologiyalar
 
 | Qism     | Stack                                                      |
 | -------- | ---------------------------------------------------------- |
 | Backend  | Node.js 22.18+, Express 5, Prisma 7, PostgreSQL, JWT       |
-| Frontend | React 19, Vite, Tailwind CSS 4, React Router (mobile-first) |
+| Frontend | React 19, Vite, Ant Design 6 (light/dark mavzu), React Router (mobile-first) |
 | Excel    | exceljs                                                    |
 
 ## Ishga tushirish

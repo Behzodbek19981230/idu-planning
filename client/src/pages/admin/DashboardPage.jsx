@@ -1,19 +1,42 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, FileSpreadsheet, FileUp, Users } from 'lucide-react';
-import { ErrorBox, PageHeader, Spinner } from '../../components/ui.jsx';
+import { Button, Card, Col, Row, Statistic, Table, Tag, Typography, theme } from 'antd';
+import { BookOutlined, FileExcelOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
+import { ErrorAlert, Loading, PageHeader } from '../../components/ui.jsx';
 import { useApi } from '../../lib/useApi.js';
 import { formatDateTime } from '../../lib/schedule.js';
 
-function Stat({ icon: Icon, label, value, to }) {
+function StatCard({ icon, title, value, to, footer }) {
+  const { token } = theme.useToken();
   return (
-    <Link to={to} className="card flex items-center gap-4 p-5 transition hover:border-indigo-300 hover:shadow">
-      <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
-        <Icon className="h-6 w-6" />
-      </div>
-      <div>
-        <div className="text-2xl font-bold">{value}</div>
-        <div className="text-sm text-slate-500">{label}</div>
-      </div>
+    <Link to={to}>
+      <Card hoverable>
+        <Row align="middle" gutter={16} wrap={false}>
+          <Col flex="none">
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                display: 'grid',
+                placeItems: 'center',
+                fontSize: 22,
+                color: token.colorPrimary,
+                background: token.colorPrimaryBg,
+              }}
+            >
+              {icon}
+            </div>
+          </Col>
+          <Col flex="auto" style={{ minWidth: 0 }}>
+            <Statistic title={title} value={value} />
+            {footer && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>
+                {footer}
+              </Typography.Text>
+            )}
+          </Col>
+        </Row>
+      </Card>
     </Link>
   );
 }
@@ -22,50 +45,77 @@ export default function DashboardPage() {
   const stats = useApi('/admin/stats');
   const uploads = useApi('/admin/uploads');
 
-  if (stats.loading && !stats.data) return <Spinner />;
-  if (stats.error) return <ErrorBox error={stats.error} onRetry={stats.reload} />;
+  if (stats.loading && !stats.data) return <Loading />;
+  if (stats.error) return <ErrorAlert error={stats.error} onRetry={stats.reload} />;
   const { teachers, lessons, lastUpload } = stats.data;
 
   return (
     <div>
       <PageHeader
         title="Boshqaruv paneli"
-        actions={
-          <Link to="/admin/import" className="btn-primary">
-            <FileUp className="h-4 w-4" /> Jadval yuklash
+        extra={
+          <Link to="/admin/import">
+            <Button type="primary" icon={<UploadOutlined />}>
+              Jadval yuklash
+            </Button>
           </Link>
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Stat icon={Users} label="O'qituvchilar" value={teachers} to="/admin/teachers" />
-        <Stat icon={BookOpen} label="Darslar" value={lessons} to="/admin/schedule" />
-        <Stat
-          icon={FileSpreadsheet}
-          label={lastUpload ? `Oxirgi yuklash: ${formatDateTime(lastUpload.createdAt)}` : 'Hali yuklanmagan'}
-          value={lastUpload ? lastUpload.rowsCount : '—'}
-          to="/admin/import"
-        />
-      </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+          <StatCard icon={<TeamOutlined />} title="O'qituvchilar" value={teachers} to="/admin/teachers" />
+        </Col>
+        <Col xs={24} sm={8}>
+          <StatCard icon={<BookOutlined />} title="Darslar" value={lessons} to="/admin/schedule" />
+        </Col>
+        <Col xs={24} sm={8}>
+          <StatCard
+            icon={<FileExcelOutlined />}
+            title="Oxirgi yuklash"
+            value={lastUpload ? lastUpload.rowsCount : '—'}
+            footer={lastUpload ? formatDateTime(lastUpload.createdAt) : 'Hali yuklanmagan'}
+            to="/admin/import"
+          />
+        </Col>
+      </Row>
 
-      <h2 className="mb-3 mt-8 font-semibold">Yuklashlar tarixi</h2>
-      {uploads.data?.uploads.length ? (
-        <div className="card divide-y divide-slate-100">
-          {uploads.data.uploads.map((u) => (
-            <div key={u.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm">
-              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-              <span className="min-w-0 flex-1 truncate font-medium">{u.filename}</span>
-              <span className="text-slate-500">{u.rowsCount} ta dars</span>
-              <span className="text-slate-500">{u.mode === 'replace' ? 'Almashtirildi' : "Qo'shildi"}</span>
-              <span className="w-full text-xs text-slate-400 sm:w-auto">
-                {formatDateTime(u.createdAt)} · {u.uploadedBy?.fullName}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-slate-500">Hali hech qanday fayl yuklanmagan.</p>
-      )}
+      <Card title="Yuklashlar tarixi" style={{ marginTop: 24 }} styles={{ body: { padding: 0 } }}>
+        <Table
+          rowKey="id"
+          size="middle"
+          loading={uploads.loading && !uploads.data}
+          dataSource={uploads.data?.uploads ?? []}
+          pagination={false}
+          locale={{ emptyText: 'Hali hech qanday fayl yuklanmagan' }}
+          scroll={{ x: true }}
+          columns={[
+            {
+              title: 'Fayl',
+              dataIndex: 'filename',
+              render: (v, u) => (
+                <>
+                  <FileExcelOutlined style={{ color: '#16a34a', marginRight: 8 }} />
+                  <Typography.Text strong>{v}</Typography.Text>
+                  <br />
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {formatDateTime(u.createdAt)}
+                  </Typography.Text>
+                </>
+              ),
+            },
+            { title: 'Darslar', dataIndex: 'rowsCount', width: 100 },
+            {
+              title: 'Rejim',
+              dataIndex: 'mode',
+              width: 130,
+              responsive: ['sm'],
+              render: (m) => (m === 'replace' ? <Tag color="blue">Almashtirildi</Tag> : <Tag color="green">Qo'shildi</Tag>),
+            },
+            { title: 'Kim yukladi', dataIndex: ['uploadedBy', 'fullName'], responsive: ['md'] },
+          ]}
+        />
+      </Card>
     </div>
   );
 }

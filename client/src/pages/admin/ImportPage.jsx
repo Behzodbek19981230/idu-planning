@@ -1,31 +1,26 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Loader2, UploadCloud, UserPlus } from 'lucide-react';
+import { Alert, Button, Card, Col, Collapse, Flex, Radio, Result, Row, Statistic, Table, Tag, Typography, Upload, theme } from 'antd';
+import { CheckCircleOutlined, DownloadOutlined, FileExcelOutlined, InboxOutlined, UserAddOutlined, WarningOutlined } from '@ant-design/icons';
 import { api } from '../../lib/api.js';
 import { downloadCredentialsCsv } from '../../lib/credentials.js';
-import { Badge, ErrorBox, PageHeader } from '../../components/ui.jsx';
+import { ErrorAlert, PageHeader } from '../../components/ui.jsx';
+
+const { Text, Paragraph } = Typography;
+
+const MODES = [
+  { value: 'replace', title: 'Almashtirish', desc: "Eski jadval to'liq o'chiriladi va yangisi yoziladi" },
+  { value: 'append', title: "Qo'shish", desc: "Mavjud jadvalga yangi darslar qo'shiladi" },
+];
 
 export default function ImportPage() {
-  const inputRef = useRef(null);
+  const { token } = theme.useToken();
   const [file, setFile] = useState(null);
   const [mode, setMode] = useState('replace');
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [dragging, setDragging] = useState(false);
-
-  const pick = (f) => {
-    if (!f) return;
-    if (!/\.xlsx$/i.test(f.name)) {
-      setError(new Error('Faqat .xlsx formatidagi fayl qabul qilinadi'));
-      return;
-    }
-    setFile(f);
-    setPreview(null);
-    setResult(null);
-    setError(null);
-  };
 
   const send = async (dryRun) => {
     const fd = new FormData();
@@ -53,280 +48,302 @@ export default function ImportPage() {
     setFile(null);
     setPreview(null);
     setResult(null);
-    if (inputRef.current) inputRef.current.value = '';
+    setError(null);
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div style={{ maxWidth: 820, margin: '0 auto' }}>
       <PageHeader
         title="Jadvalni import qilish"
         subtitle="Excel (.xlsx) faylidan dars jadvalini yuklang"
-        actions={
-          <button className="btn-secondary" onClick={() => api.download('/admin/schedule/template', 'dars-jadvali-shablon.xlsx').catch(setError)}>
-            <Download className="h-4 w-4" /> Shablon
-          </button>
+        extra={
+          <Button icon={<DownloadOutlined />} onClick={() => api.download('/admin/schedule/template', 'dars-jadvali-shablon.xlsx').catch(setError)}>
+            Shablon
+          </Button>
         }
       />
 
       {result ? (
         <ImportResult result={result} onAgain={reset} />
       ) : (
-        <div className="space-y-4">
-          <label
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
+        <Flex vertical gap={16}>
+          <Upload.Dragger
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            maxCount={1}
+            showUploadList={false}
+            beforeUpload={(f) => {
+              if (!/\.xlsx$/i.test(f.name)) {
+                setError(new Error('Faqat .xlsx formatidagi fayl qabul qilinadi'));
+                return Upload.LIST_IGNORE;
+              }
+              setFile(f);
+              setPreview(null);
+              setError(null);
+              return false; // avtomatik yuklamaymiz — avval tekshiramiz
             }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              pick(e.dataTransfer.files[0]);
-            }}
-            className={`card flex cursor-pointer flex-col items-center border-2 border-dashed px-6 py-10 text-center transition ${
-              dragging ? 'border-indigo-500 bg-indigo-50' : 'hover:border-indigo-300'
-            }`}
+            style={{ background: token.colorBgContainer }}
           >
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              className="hidden"
-              onChange={(e) => pick(e.target.files[0])}
-            />
             {file ? (
               <>
-                <FileSpreadsheet className="mb-2 h-10 w-10 text-emerald-600" />
-                <p className="break-all font-medium">{file.name}</p>
-                <p className="text-sm text-slate-500">{(file.size / 1024).toFixed(0)} KB · boshqa fayl tanlash uchun bosing</p>
+                <p className="ant-upload-drag-icon">
+                  <FileExcelOutlined style={{ color: token.colorSuccess }} />
+                </p>
+                <p className="ant-upload-text" style={{ wordBreak: 'break-all' }}>
+                  {file.name}
+                </p>
+                <p className="ant-upload-hint">{(file.size / 1024).toFixed(0)} KB · boshqa fayl tanlash uchun bosing</p>
               </>
             ) : (
               <>
-                <UploadCloud className="mb-2 h-10 w-10 text-indigo-500" />
-                <p className="font-medium">Faylni tanlang yoki shu yerga tashlang</p>
-                <p className="text-sm text-slate-500">Faqat .xlsx, 10 MB gacha</p>
+                <p className="ant-upload-drag-icon">
+                  <InboxOutlined />
+                </p>
+                <p className="ant-upload-text">Faylni tanlang yoki shu yerga tashlang</p>
+                <p className="ant-upload-hint">Faqat .xlsx, 10 MB gacha</p>
               </>
             )}
-          </label>
+          </Upload.Dragger>
 
-          <fieldset className="card grid gap-2 p-4 sm:grid-cols-2">
-            <legend className="sr-only">Import rejimi</legend>
-            {[
-              ['replace', 'Almashtirish', "Eski jadval to'liq o'chiriladi va yangisi yoziladi"],
-              ['append', "Qo'shish", "Mavjud jadvalga yangi darslar qo'shiladi"],
-            ].map(([value, title, desc]) => (
-              <label
-                key={value}
-                className={`flex cursor-pointer gap-3 rounded-xl border p-3 transition ${
-                  mode === value ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="mode"
-                  value={value}
-                  checked={mode === value}
-                  onChange={() => {
-                    setMode(value);
-                    setPreview(null);
-                  }}
-                  className="mt-1 accent-indigo-600"
-                />
-                <span>
-                  <span className="block text-sm font-medium">{title}</span>
-                  <span className="block text-xs text-slate-500">{desc}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+          <Card size="small" title="Import rejimi">
+            <Radio.Group
+              value={mode}
+              onChange={(e) => {
+                setMode(e.target.value);
+                setPreview(null);
+              }}
+              style={{ width: '100%' }}
+            >
+              <Row gutter={[8, 8]}>
+                {MODES.map((m) => (
+                  <Col key={m.value} xs={24} sm={12}>
+                    <label
+                      style={{
+                        display: 'block',
+                        height: '100%',
+                        padding: 12,
+                        cursor: 'pointer',
+                        borderRadius: token.borderRadius,
+                        border: `1px solid ${mode === m.value ? token.colorPrimary : token.colorBorderSecondary}`,
+                        background: mode === m.value ? token.colorPrimaryBg : 'transparent',
+                      }}
+                    >
+                      <Radio value={m.value}>
+                        <Text strong>{m.title}</Text>
+                        <br />
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {m.desc}
+                        </Text>
+                      </Radio>
+                    </label>
+                  </Col>
+                ))}
+              </Row>
+            </Radio.Group>
+          </Card>
 
-          <ErrorBox error={error} />
+          <ErrorAlert error={error} />
 
           {preview && <PreviewSummary preview={preview} />}
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {!preview ? (
-              <button className="btn-primary flex-1 py-3" disabled={!file || busy} onClick={() => send(true)}>
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Faylni tekshirish
-              </button>
-            ) : (
-              <>
-                <button className="btn-secondary py-3" onClick={reset} disabled={busy}>
-                  Bekor qilish
-                </button>
-                <button className="btn-primary flex-1 py-3" disabled={busy || !preview.lessonsCount} onClick={() => send(false)}>
-                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Tasdiqlash va {preview.lessonsCount} ta darsni yuklash
-                </button>
-              </>
-            )}
-          </div>
+          {!preview ? (
+            <Button type="primary" size="large" block disabled={!file} loading={busy} onClick={() => send(true)}>
+              Faylni tekshirish
+            </Button>
+          ) : (
+            <Flex gap={8} wrap>
+              <Button size="large" onClick={reset} disabled={busy}>
+                Bekor qilish
+              </Button>
+              <Button type="primary" size="large" style={{ flex: 1 }} disabled={!preview.lessonsCount} loading={busy} onClick={() => send(false)}>
+                Tasdiqlash va {preview.lessonsCount} ta darsni yuklash
+              </Button>
+            </Flex>
+          )}
 
           <FormatHelp />
-        </div>
+        </Flex>
       )}
     </div>
   );
 }
 
 function PreviewSummary({ preview }) {
+  const { token } = theme.useToken();
+  const sheets = Object.entries(preview.sheets || {});
+
+  const panels = [];
+  if (preview.newTeachers.length) {
+    panels.push({
+      key: 'new',
+      label: (
+        <>
+          <UserAddOutlined /> Yangi o'qituvchilar uchun login/parol yaratiladi ({preview.newTeachers.length})
+        </>
+      ),
+      children: (
+        <Flex wrap gap={6}>
+          {preview.newTeachers.map((n) => (
+            <Tag key={n}>{n}</Tag>
+          ))}
+        </Flex>
+      ),
+    });
+  }
+  if (preview.errorsCount) {
+    panels.push({
+      key: 'errors',
+      label: (
+        <Text type="danger">
+          <WarningOutlined /> {preview.errorsCount} ta qator o'tkazib yuboriladi
+        </Text>
+      ),
+      children: (
+        <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 260, overflowY: 'auto' }}>
+          {preview.errors.map((e, i) => (
+            <li key={i}>
+              <Text strong>{e.where}:</Text> {e.message}
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
+
   return (
-    <div className="card space-y-4 p-4">
-      <h2 className="font-semibold">Tekshiruv natijasi</h2>
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl bg-emerald-50 p-3">
-          <div className="text-xl font-bold text-emerald-700">{preview.lessonsCount}</div>
-          <div className="text-xs text-emerald-700">dars</div>
-        </div>
-        <div className="rounded-xl bg-indigo-50 p-3">
-          <div className="text-xl font-bold text-indigo-700">{preview.matchedTeachers}</div>
-          <div className="text-xs text-indigo-700">mavjud o'qituvchi</div>
-        </div>
-        <div className="rounded-xl bg-amber-50 p-3">
-          <div className="text-xl font-bold text-amber-700">{preview.newTeachers.length}</div>
-          <div className="text-xs text-amber-700">yangi o'qituvchi</div>
-        </div>
-      </div>
+    <Card title="Tekshiruv natijasi">
+      <Flex vertical gap={16}>
+        <Row gutter={[12, 12]}>
+          {[
+            ['Darslar', preview.lessonsCount, token.colorSuccess],
+            ["Mavjud o'qituvchi", preview.matchedTeachers, token.colorPrimary],
+            ["Yangi o'qituvchi", preview.newTeachers.length, token.colorWarning],
+          ].map(([title, value, color]) => (
+            <Col key={title} xs={8}>
+              <Statistic title={title} value={value} styles={{ content: { color } }} />
+            </Col>
+          ))}
+        </Row>
 
-      {Object.keys(preview.sheets || {}).length > 0 && (
-        <div className="text-sm">
-          <p className="mb-1.5 font-medium">Varaqlar (kurslar)</p>
-          <ul className="flex flex-wrap gap-1.5">
-            {Object.entries(preview.sheets).map(([name, count]) => (
-              <li key={name}>
-                <Badge tone="indigo">
+        {sheets.length > 0 && (
+          <div>
+            <Text type="secondary">Varaqlar (kurslar):</Text>
+            <Flex wrap gap={6} style={{ marginTop: 6 }}>
+              {sheets.map(([name, count]) => (
+                <Tag key={name} color="blue">
                   {name}: {count}
-                </Badge>
-              </li>
-            ))}
-            {preview.skippedSheets?.map((name) => (
-              <li key={name} title="Bu varaq guruhlar jadvali emas, o'tkazib yuborildi">
-                <Badge>{name}: o'tkazildi</Badge>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+                </Tag>
+              ))}
+              {preview.skippedSheets?.map((name) => (
+                <Tag key={name}>{name}: o'tkazildi</Tag>
+              ))}
+            </Flex>
+          </div>
+        )}
 
-      {preview.mode === 'replace' && (
-        <p className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          Tasdiqlansa, hozirgi jadvaldagi barcha darslar o'chirilib, yangi fayldagilar bilan almashtiriladi.
-        </p>
-      )}
+        {preview.mode === 'replace' && (
+          <Alert type="warning" showIcon title="Tasdiqlansa, hozirgi jadvaldagi barcha darslar o'chirilib, yangi fayldagilar bilan almashtiriladi." />
+        )}
 
-      {preview.newTeachers.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer font-medium">
-            <UserPlus className="mr-1 inline h-4 w-4" /> Yangi o'qituvchilar uchun login/parol yaratiladi ({preview.newTeachers.length})
-          </summary>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {preview.newTeachers.map((n) => (
-              <li key={n}>
-                <Badge>{n}</Badge>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-
-      {preview.errorsCount > 0 && (
-        <div className="text-sm">
-          <p className="mb-2 flex items-center gap-1.5 font-medium text-red-700">
-            <AlertTriangle className="h-4 w-4" /> {preview.errorsCount} ta qator o'tkazib yuboriladi:
-          </p>
-          <ul className="max-h-60 space-y-1 overflow-y-auto rounded-xl bg-red-50 p-3 text-red-800">
-            {preview.errors.map((e, i) => (
-              <li key={i}>
-                <span className="font-medium">{e.where}:</span> {e.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
+        {panels.length > 0 && <Collapse items={panels} defaultActiveKey={preview.errorsCount ? ['errors'] : []} />}
+      </Flex>
+    </Card>
   );
 }
 
 function ImportResult({ result, onAgain }) {
   return (
-    <div className="space-y-4">
-      <div className="card flex items-start gap-3 border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
-        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-        <div>
-          <p className="font-semibold">Jadval muvaffaqiyatli yuklandi</p>
-          <p className="text-sm">
-            {result.lessonsCount} ta dars saqlandi
-            {result.errorsCount > 0 && `, ${result.errorsCount} ta qator o'tkazib yuborildi`}.
-          </p>
-        </div>
-      </div>
+    <Flex vertical gap={16}>
+      <Card>
+        <Result
+          status="success"
+          icon={<CheckCircleOutlined />}
+          title="Jadval muvaffaqiyatli yuklandi"
+          subTitle={`${result.lessonsCount} ta dars saqlandi${result.errorsCount ? `, ${result.errorsCount} ta qator o'tkazib yuborildi` : ''}.`}
+          extra={[
+            <Button key="again" onClick={onAgain}>
+              Yana fayl yuklash
+            </Button>,
+            <Link key="view" to="/admin/schedule">
+              <Button type="primary">Jadvalni ko'rish</Button>
+            </Link>,
+          ]}
+          style={{ padding: '16px 0' }}
+        />
+      </Card>
 
       {result.credentials.length > 0 && (
-        <div className="card p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="font-semibold">Yangi o'qituvchilar login/parollari</h2>
-              <p className="text-sm text-red-600">Parollar faqat hozir ko'rsatiladi — yuklab oling yoki nusxa oling!</p>
-            </div>
-            <button className="btn-primary" onClick={() => downloadCredentialsCsv(result.credentials)}>
-              <Download className="h-4 w-4" /> Excel (CSV)
-            </button>
-          </div>
-          <ul className="-mx-4 divide-y divide-slate-100 border-t border-slate-100 text-sm">
-            {result.credentials.map((c) => (
-              <li key={c.username} className="grid gap-x-4 px-4 py-2.5 sm:grid-cols-[1fr_10rem_8rem]">
-                <span className="font-medium">{c.fullName}</span>
-                <span className="text-slate-600">
-                  <span className="text-slate-400 sm:hidden">Login: </span>
-                  <span className="font-mono">{c.username}</span>
-                </span>
-                <span className="text-slate-600">
-                  <span className="text-slate-400 sm:hidden">Parol: </span>
-                  <span className="font-mono">{c.password}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card
+          title="Yangi o'qituvchilar login/parollari"
+          extra={
+            <Button type="primary" icon={<DownloadOutlined />} onClick={() => downloadCredentialsCsv(result.credentials)}>
+              CSV
+            </Button>
+          }
+          styles={{ body: { padding: 0 } }}
+        >
+          <Alert
+            type="info"
+            showIcon
+            banner
+            title="Barcha login/parollarni keyinroq O'qituvchilar → Excel orqali ham yuklab olishingiz mumkin."
+          />
+          <Table
+            rowKey="username"
+            size="small"
+            pagination={false}
+            scroll={{ x: true }}
+            dataSource={result.credentials}
+            columns={[
+              { title: "F.I.Sh.", dataIndex: 'fullName' },
+              { title: 'Login', dataIndex: 'username', render: (v) => <Text code copyable>{v}</Text> },
+              { title: 'Parol', dataIndex: 'password', render: (v) => <Text code copyable>{v}</Text> },
+            ]}
+          />
+        </Card>
       )}
-
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <button className="btn-secondary" onClick={onAgain}>Yana fayl yuklash</button>
-        <Link to="/admin/schedule" className="btn-primary">Jadvalni ko'rish</Link>
-      </div>
-    </div>
+    </Flex>
   );
 }
 
 function FormatHelp() {
   return (
-    <details className="card p-4 text-sm text-slate-600">
-      <summary className="cursor-pointer font-medium text-slate-800">Excel fayl formati</summary>
-      <div className="mt-3 space-y-3">
-        <div>
-          <p className="font-medium text-slate-800">1. Fakultet jadvali (to'r ko'rinishi)</p>
-          <ul className="mt-1 list-disc space-y-1 pl-5">
-            <li>Sarlavha qatori: <b>Kun</b> | <b>Juftlik</b> | <b>Vaqti</b> | guruhlar (Uz-11-26, Ru-1-26 ...).</li>
-            <li>
-              Katak: <span className="font-mono text-xs">Fan nomi (A)</span> / <span className="font-mono text-xs">kat.o'qit R.Sobirov</span> /{' '}
-              <span className="font-mono text-xs">Xona: 401</span>. (M) — ma'ruza, (A) — amaliy, (S) — seminar.
-            </li>
-            <li>Bir nechta guruh ustida birlashtirilgan katak — bitta dars, barcha guruhlar bilan.</li>
-            <li>"MUSTAQIL TA'LIM" va bo'sh kataklar o'tkazib yuboriladi.</li>
-          </ul>
-        </div>
-        <div>
-          <p className="font-medium text-slate-800">2. Ro'yxat ko'rinishi (shablon)</p>
-          <ul className="mt-1 list-disc space-y-1 pl-5">
-            <li>Har bir qator — bitta dars: <b>O'qituvchi</b>, <b>Kun</b>, <b>Fan</b>, <b>Juftlik</b> yoki vaqt, Guruh, Xona ...</li>
-          </ul>
-        </div>
-        <p>
-          O'qituvchi jadvaldagi nomi (masalan, <span className="font-mono text-xs">R.Sobirov</span>) bo'yicha mavjud hisobga bog'lanadi; yangi
-          nom uchun login/parol avtomatik yaratiladi.
-        </p>
-      </div>
-    </details>
+    <Collapse
+      items={[
+        {
+          key: 'format',
+          label: 'Excel fayl formati',
+          children: (
+            <Typography>
+              <Paragraph strong style={{ marginBottom: 4 }}>
+                1. Fakultet jadvali (to'r ko'rinishi)
+              </Paragraph>
+              <ul>
+                <li>
+                  Sarlavha qatori: <Text strong>Kun</Text> | <Text strong>Juftlik</Text> | <Text strong>Vaqti</Text> | guruhlar (Uz-11-26, Ru-1-26 ...).
+                </li>
+                <li>
+                  Katak: <Text code>Fan nomi (A)</Text> / <Text code>kat.o'qit R.Sobirov</Text> / <Text code>Xona: 401</Text>. (M) — ma'ruza, (A) — amaliy,
+                  (S) — seminar.
+                </li>
+                <li>Bir nechta guruh ustida birlashtirilgan katak — bitta dars, barcha guruhlar bilan.</li>
+                <li>"MUSTAQIL TA'LIM" va bo'sh kataklar, "Xonalar bandligi" varag'i o'tkazib yuboriladi.</li>
+              </ul>
+              <Paragraph strong style={{ marginBottom: 4 }}>
+                2. Ro'yxat ko'rinishi (shablon)
+              </Paragraph>
+              <ul>
+                <li>
+                  Har bir qator — bitta dars: <Text strong>O'qituvchi</Text>, <Text strong>Kun</Text>, <Text strong>Fan</Text>, Juftlik yoki vaqt, Guruh, Xona ...
+                </li>
+              </ul>
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                O'qituvchi jadvaldagi nomi (masalan, <Text code>R.Sobirov</Text>) bo'yicha mavjud hisobga bog'lanadi; yangi nom uchun login/parol avtomatik
+                yaratiladi.
+              </Paragraph>
+            </Typography>
+          ),
+        },
+      ]}
+    />
   );
 }

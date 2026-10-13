@@ -76,3 +76,11 @@ export const formatDateTime = (iso) => {
   const d = new Date(iso);
   return `${formatDate(d)} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
+
+// Dars turi -> antd preset rang nomi (Tag color va token palitrasi uchun)
+export const TYPE_COLORS = {
+  "Ma'ruza": 'blue',
+  Amaliy: 'green',
+  Seminar: 'gold',
+  Laboratoriya: 'purple',
+};

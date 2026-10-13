@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './lib/auth.jsx';
-import { Spinner } from './components/ui.jsx';
+import { Loading } from './components/ui.jsx';
 import Layout from './components/Layout.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
@@ -15,7 +15,7 @@ import SchedulePage from './pages/admin/SchedulePage.jsx';
 export default function App() {
   const { user, loading } = useAuth();
 
-  if (loading) return <Spinner className="min-h-dvh items-center" />;
+  if (loading) return <Loading fullScreen />;
   if (!user) return <LoginPage />;
 
   const isAdmin = user.role === 'ADMIN';

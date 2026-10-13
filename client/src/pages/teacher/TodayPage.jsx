@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Coffee } from 'lucide-react';
+import { Alert, Col, Flex, Row, Segmented, Tag, Typography, theme } from 'antd';
 import LessonCard from '../../components/LessonCard.jsx';
-import { EmptyState, ErrorBox, Spinner } from '../../components/ui.jsx';
+import { EmptyState, ErrorAlert, Loading } from '../../components/ui.jsx';
 import { useApi } from '../../lib/useApi.js';
 import { useAuth } from '../../lib/auth.jsx';
 import {
@@ -16,7 +16,7 @@ import {
   occursThisWeek,
 } from '../../lib/schedule.js';
 
-/** Har daqiqada yangilanadigan joriy vaqt */
+/** Har 30 soniyada yangilanadigan joriy vaqt */
 function useNow() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -28,6 +28,7 @@ function useNow() {
 
 export default function TodayPage() {
   const { user } = useAuth();
+  const { token } = theme.useToken();
   const { data, error, loading, reload } = useApi('/me/lessons');
   const now = useNow();
   const today = isoDay(now);
@@ -67,69 +68,74 @@ export default function TodayPage() {
 
   return (
     <div>
-      <div className="mb-5">
-        <p className="text-sm text-slate-500">
-          {DAYS[today - 1].name}, {formatDate(now)}
-          {parity && <> · <span className="font-medium text-indigo-600">{WEEK_LABEL[parity]}</span></>}
-        </p>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Assalomu alaykum, {firstName}!</h1>
+      <div style={{ marginBottom: 20 }}>
+        <Flex wrap align="center" gap={8}>
+          <Typography.Text type="secondary">
+            {DAYS[today - 1].name}, {formatDate(now)}
+          </Typography.Text>
+          {parity && <Tag color="purple">{WEEK_LABEL[parity]}</Tag>}
+        </Flex>
+        <Typography.Title level={3} style={{ margin: '2px 0 0' }}>
+          Assalomu alaykum, {firstName}!
+        </Typography.Title>
       </div>
 
-      {/* Kunlar tanlovi: mobilda gorizontal aylantiriladi */}
-      <div className="scrollbar-none -mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1">
-        {days.map((d) => {
-          const active = d.n === day;
-          return (
-            <button
-              key={d.n}
-              onClick={() => setDay(d.n)}
-              className={`flex min-w-[3.25rem] flex-col items-center rounded-2xl border px-3 py-2 transition ${
-                active
-                  ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-200'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300'
-              }`}
-            >
-              <span className={`text-xs ${active ? 'text-indigo-100' : 'text-slate-500'}`}>{d.short}</span>
-              <span className="text-base font-bold">{countByDay[d.n] || 0}</span>
-              {d.n === today && <span className={`mt-0.5 h-1 w-1 rounded-full ${active ? 'bg-white' : 'bg-indigo-600'}`} />}
-            </button>
-          );
-        })}
+      {/* Kunlar tanlovi */}
+      <div className="scrollbar-none" style={{ overflowX: 'auto', margin: '0 -16px 20px', padding: '0 16px' }}>
+        <Segmented
+          block
+          size="large"
+          value={day}
+          onChange={setDay}
+          style={{ minWidth: days.length * 56 }}
+          options={days.map((d) => ({
+            value: d.n,
+            label: (
+              <Flex vertical align="center" style={{ padding: '4px 0', lineHeight: 1.2 }}>
+                <span style={{ fontSize: 12, opacity: 0.7 }}>{d.short}</span>
+                <span style={{ fontWeight: 700, fontSize: 17 }}>{countByDay[d.n] || 0}</span>
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    marginTop: 2,
+                    borderRadius: '50%',
+                    background: d.n === today ? token.colorPrimary : 'transparent',
+                  }}
+                />
+              </Flex>
+            ),
+          }))}
+        />
       </div>
 
       {loading && !data ? (
-        <Spinner />
+        <Loading />
       ) : error ? (
-        <ErrorBox error={error} onRetry={reload} />
+        <ErrorAlert error={error} onRetry={reload} />
       ) : (
         <>
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="font-semibold">{isToday ? 'Bugungi darslar' : DAYS[day - 1].name}</h2>
-            <span className="text-sm text-slate-500">{dayLessons.length} ta dars</span>
-          </div>
+          <Flex justify="space-between" align="baseline" style={{ marginBottom: 12 }}>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              {isToday ? 'Bugungi darslar' : DAYS[day - 1].name}
+            </Typography.Title>
+            <Typography.Text type="secondary">{dayLessons.length} ta dars</Typography.Text>
+          </Flex>
 
           {isToday && dayLessons.length > 0 && !current && !nextLesson && (
-            <p className="mb-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-              Bugungi barcha darslar tugadi. Yaxshi dam oling!
-            </p>
+            <Alert type="success" showIcon title="Bugungi barcha darslar tugadi. Yaxshi dam oling!" style={{ marginBottom: 12 }} />
           )}
 
           {dayLessons.length ? (
-            <div className="grid gap-3 lg:grid-cols-2">
+            <Row gutter={[12, 12]}>
               {dayLessons.map((l) => (
-                <LessonCard
-                  key={l.id}
-                  lesson={l}
-                  status={statusOf(l)}
-                  note={isToday ? noteOf(l) : undefined}
-                  dimmed={!occursThisWeek(l, parity)}
-                />
+                <Col key={l.id} xs={24} lg={12}>
+                  <LessonCard lesson={l} status={statusOf(l)} note={isToday ? noteOf(l) : undefined} dimmed={!occursThisWeek(l, parity)} />
+                </Col>
               ))}
-            </div>
+            </Row>
           ) : (
-            <EmptyState icon={Coffee} title="Bu kunda dars yo'q">
-              Boshqa kunni tanlab ko'ring.
-            </EmptyState>
+            <EmptyState title="Bu kunda dars yo'q">Boshqa kunni tanlab ko'ring.</EmptyState>
           )}
         </>
       )}

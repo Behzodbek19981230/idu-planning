@@ -1,18 +1,16 @@
 import { useState } from 'react';
-import { CalendarDays, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Alert, Button, Card, Flex, Form, Input, Typography, theme } from 'antd';
+import { CalendarOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuth } from '../lib/auth.jsx';
-import { ErrorBox } from '../components/ui.jsx';
+import ThemeSwitch from '../components/ThemeSwitch.jsx';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [show, setShow] = useState(false);
+  const { token } = theme.useToken();
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const submit = async ({ username, password }) => {
     setBusy(true);
     setError(null);
     try {
@@ -24,63 +22,54 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center text-white">
-          <div className="mb-3 rounded-2xl bg-white/15 p-3 backdrop-blur">
-            <CalendarDays className="h-8 w-8" />
-          </div>
-          <h1 className="text-2xl font-bold">Dars jadvali</h1>
-          <p className="mt-1 text-sm text-indigo-100">O'qituvchilar uchun shaxsiy jadval</p>
-        </div>
-
-        <form onSubmit={submit} className="card space-y-4 p-6 shadow-xl">
-          <div>
-            <label className="label" htmlFor="username">Login</label>
-            <input
-              id="username"
-              className="input"
-              autoComplete="username"
-              autoCapitalize="none"
-              autoCorrect="off"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="password">Parol</label>
-            <div className="relative">
-              <input
-                id="password"
-                className="input pr-11"
-                type={show ? 'text' : 'password'}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShow((s) => !s)}
-                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-600"
-                aria-label={show ? 'Parolni yashirish' : "Parolni ko'rsatish"}
-              >
-                {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          <ErrorBox error={error} />
-
-          <button className="btn-primary w-full py-3" disabled={busy}>
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            Kirish
-          </button>
-          <p className="text-center text-xs text-slate-500">Login va parolni administrator beradi.</p>
-        </form>
+    <Flex
+      justify="center"
+      align="center"
+      style={{
+        minHeight: '100dvh',
+        padding: 16,
+        background: `radial-gradient(1200px 600px at 10% -10%, ${token.colorPrimaryBgHover}, transparent 60%),
+                     radial-gradient(900px 500px at 110% 110%, ${token.purple2}, transparent 60%),
+                     ${token.colorBgLayout}`,
+      }}
+    >
+      <div style={{ position: 'fixed', top: 12, right: 12 }}>
+        <ThemeSwitch />
       </div>
-    </div>
+
+      <Flex vertical gap={24} style={{ width: '100%', maxWidth: 380 }}>
+        <Flex vertical align="center" gap={8}>
+          <Flex
+            align="center"
+            justify="center"
+            style={{ width: 56, height: 56, borderRadius: 16, background: token.colorPrimary, color: '#fff', fontSize: 28, boxShadow: token.boxShadow }}
+          >
+            <CalendarOutlined />
+          </Flex>
+          <Typography.Title level={2} style={{ margin: 0 }}>
+            Dars jadvali
+          </Typography.Title>
+          <Typography.Text type="secondary">O'qituvchilar uchun shaxsiy jadval</Typography.Text>
+        </Flex>
+
+        <Card style={{ boxShadow: token.boxShadowSecondary }} styles={{ body: { padding: 24 } }}>
+          <Form layout="vertical" size="large" onFinish={submit} requiredMark={false} autoComplete="on">
+            <Form.Item name="username" label="Login" rules={[{ required: true, message: 'Loginni kiriting' }]}>
+              <Input prefix={<UserOutlined />} autoComplete="username" autoCapitalize="none" autoCorrect="off" autoFocus />
+            </Form.Item>
+            <Form.Item name="password" label="Parol" rules={[{ required: true, message: 'Parolni kiriting' }]}>
+              <Input.Password prefix={<LockOutlined />} autoComplete="current-password" />
+            </Form.Item>
+            {error && <Alert type="error" showIcon title={error.message} style={{ marginBottom: 16 }} />}
+            <Button type="primary" htmlType="submit" block loading={busy}>
+              Kirish
+            </Button>
+          </Form>
+          <Typography.Paragraph type="secondary" style={{ textAlign: 'center', margin: '16px 0 0', fontSize: 12 }}>
+            Login va parolni administrator beradi.
+          </Typography.Paragraph>
+        </Card>
+      </Flex>
+    </Flex>
   );
 }

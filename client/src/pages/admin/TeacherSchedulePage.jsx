@@ -1,7 +1,8 @@
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { Button } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import WeekSchedule from '../../components/WeekSchedule.jsx';
-import { ErrorBox, PageHeader, Spinner } from '../../components/ui.jsx';
+import { ErrorAlert, Loading, PageHeader } from '../../components/ui.jsx';
 import { useApi } from '../../lib/useApi.js';
 
 export default function TeacherSchedulePage() {
@@ -10,16 +11,21 @@ export default function TeacherSchedulePage() {
 
   return (
     <div>
-      <Link to="/admin/teachers" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600">
-        <ArrowLeft className="h-4 w-4" /> O'qituvchilar
+      <Link to="/admin/teachers">
+        <Button type="link" icon={<ArrowLeftOutlined />} style={{ paddingInline: 0, marginBottom: 8 }}>
+          O'qituvchilar
+        </Button>
       </Link>
       {loading && !data ? (
-        <Spinner />
+        <Loading />
       ) : error ? (
-        <ErrorBox error={error} onRetry={reload} />
+        <ErrorAlert error={error} onRetry={reload} />
       ) : (
         <>
-          <PageHeader title={data.teacher.fullName} subtitle={`Login: ${data.teacher.username} · ${data.lessons.length} ta dars`} />
+          <PageHeader
+            title={data.teacher.fullName}
+            subtitle={[data.teacher.position, `Login: ${data.teacher.username}`, `${data.lessons.length} ta dars`].filter(Boolean).join(' · ')}
+          />
           <WeekSchedule lessons={data.lessons} />
         </>
       )}

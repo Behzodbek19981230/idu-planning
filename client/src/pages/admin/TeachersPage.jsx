@@ -1,44 +1,71 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertTriangle, CalendarRange, Copy, FileSpreadsheet, KeyRound, Lock, Pencil, Plus, Search, Trash2, Unlock, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Alert, App, Button, Descriptions, Dropdown, Flex, Form, Grid, Input, Modal, Table, Tag, Tooltip, Typography } from 'antd';
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  FileExcelOutlined,
+  KeyOutlined,
+  LockOutlined,
+  MoreOutlined,
+  PlusOutlined,
+  ScheduleOutlined,
+  SearchOutlined,
+  UnlockOutlined,
+} from '@ant-design/icons';
 import { api } from '../../lib/api.js';
 import { useApi } from '../../lib/useApi.js';
 import { downloadCredentialsCsv } from '../../lib/credentials.js';
-import { Badge, EmptyState, ErrorBox, Modal, PageHeader, Spinner } from '../../components/ui.jsx';
+import { ErrorAlert, PageHeader } from '../../components/ui.jsx';
+
+const { Text } = Typography;
 
 export default function TeachersPage() {
+  const { modal, message } = App.useApp();
+  const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
   const [q, setQ] = useState('');
   const { data, error, loading, reload } = useApi(`/admin/teachers?q=${encodeURIComponent(q)}`);
   const [editing, setEditing] = useState(null); // null | {} (yangi) | teacher
   const [credentials, setCredentials] = useState(null);
-  const [actionError, setActionError] = useState(null);
 
-  const run = async (fn) => {
-    setActionError(null);
+  const run = async (fn, successText) => {
     try {
       await fn();
+      if (successText) message.success(successText);
       reload();
     } catch (err) {
-      setActionError(err);
+      message.error(err.message);
     }
   };
 
   const resetPassword = (t) =>
-    run(async () => {
-      if (!confirm(`${t.fullName} uchun yangi parol yaratilsinmi? Eski parol ishlamay qoladi.`)) return;
-      const { password } = await api.post(`/admin/teachers/${t.id}/reset-password`);
-      setCredentials({ fullName: t.fullName, username: t.username, password });
+    modal.confirm({
+      title: 'Parolni tiklash',
+      content: `${t.fullName} uchun yangi parol yaratilsinmi? Eski parol ishlamay qoladi.`,
+      okText: 'Yangi parol',
+      cancelText: 'Bekor qilish',
+      onOk: () =>
+        run(async () => {
+          const { password } = await api.post(`/admin/teachers/${t.id}/reset-password`);
+          setCredentials({ fullName: t.fullName, username: t.username, password });
+        }),
     });
 
-  const toggleActive = (t) => run(() => api.patch(`/admin/teachers/${t.id}`, { isActive: !t.isActive }));
+  const toggleActive = (t) =>
+    run(() => api.patch(`/admin/teachers/${t.id}`, { isActive: !t.isActive }), t.isActive ? 'Bloklandi' : 'Blokdan chiqarildi');
 
   const remove = (t) =>
-    run(async () => {
-      if (!confirm(`${t.fullName} va uning barcha darslari o'chirilsinmi?`)) return;
-      await api.del(`/admin/teachers/${t.id}`);
+    modal.confirm({
+      title: "O'qituvchini o'chirish",
+      content: `${t.fullName} va uning barcha darslari o'chirilsinmi?`,
+      okText: "O'chirish",
+      okButtonProps: { danger: true },
+      cancelText: 'Bekor qilish',
+      onOk: () => run(() => api.del(`/admin/teachers/${t.id}`), "O'chirildi"),
     });
-
-  const teachers = data?.teachers ?? [];
 
   const exportExcel = () =>
     run(() =>
@@ -49,88 +76,134 @@ export default function TeachersPage() {
     );
 
   const regenerateMissing = () =>
-    run(async () => {
-      const n = data.missingPasswords;
-      if (!confirm(`${n} ta o'qituvchiga yangi parol yaratilsinmi? Ularga avval berilgan parollar ishlamay qoladi.`)) return;
-      await api.post('/admin/teachers/regenerate-missing');
+    modal.confirm({
+      title: 'Yangi parollar yaratish',
+      content: `${data.missingPasswords} ta o'qituvchiga yangi parol yaratilsinmi? Ularga avval berilgan parollar ishlamay qoladi.`,
+      okText: 'Yaratish',
+      cancelText: 'Bekor qilish',
+      onOk: () => run(() => api.post('/admin/teachers/regenerate-missing'), 'Yangi parollar yaratildi — endi Excel yuklab oling'),
     });
+
+  const actions = (t) => [
+    { key: 'schedule', icon: <ScheduleOutlined />, label: "Jadvalni ko'rish", onClick: () => navigate(`/admin/teachers/${t.id}`) },
+    { key: 'edit', icon: <EditOutlined />, label: 'Tahrirlash', onClick: () => setEditing(t) },
+    { key: 'reset', icon: <KeyOutlined />, label: 'Parolni tiklash', onClick: () => resetPassword(t) },
+    {
+      key: 'toggle',
+      icon: t.isActive ? <LockOutlined /> : <UnlockOutlined />,
+      label: t.isActive ? 'Bloklash' : 'Blokdan chiqarish',
+      onClick: () => toggleActive(t),
+    },
+    { key: 'delete', icon: <DeleteOutlined />, label: "O'chirish", danger: true, onClick: () => remove(t) },
+  ];
+
+  const columns = [
+    {
+      title: "F.I.Sh.",
+      key: 'name',
+      render: (_, t) => (
+        <Flex vertical gap={2}>
+          <Flex wrap align="center" gap={6}>
+            <Link to={`/admin/teachers/${t.id}`}>
+              <Text strong>{t.fullName}</Text>
+            </Link>
+            {!t.isActive && <Tag color="red">Bloklangan</Tag>}
+            {t.passwordStatus === 'changed' && <Tag color="green">Parolni o'zgartirgan</Tag>}
+            {t.passwordStatus === 'unknown' && <Tag color="orange">Parol saqlanmagan</Tag>}
+          </Flex>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            {[t.position, t.scheduleName && t.scheduleName !== t.fullName && `Jadvalda: ${t.scheduleName}`].filter(Boolean).join(' · ')}
+            {!screens.md && (
+              <>
+                {t.position ? ' · ' : ''}
+                <Text code>{t.username}</Text> · {t.lessonsCount} ta dars
+              </>
+            )}
+          </Text>
+        </Flex>
+      ),
+    },
+    { title: 'Login', dataIndex: 'username', responsive: ['md'], render: (v) => <Text code>{v}</Text> },
+    { title: 'Darslar', dataIndex: 'lessonsCount', width: 90, responsive: ['md'], align: 'center' },
+    {
+      title: '',
+      key: 'actions',
+      width: screens.md ? 210 : 48,
+      align: 'right',
+      render: (_, t) =>
+        screens.md ? (
+          <Flex gap={4} justify="flex-end">
+            {actions(t).map((a) => (
+              <Tooltip key={a.key} title={a.label}>
+                <Button size="small" icon={a.icon} danger={a.danger} onClick={a.onClick} aria-label={a.label} />
+              </Tooltip>
+            ))}
+          </Flex>
+        ) : (
+          <Dropdown
+            trigger={['click']}
+            menu={{ items: actions(t).map(({ onClick: _onClick, ...a }) => a), onClick: ({ key }) => actions(t).find((a) => a.key === key)?.onClick() }}
+          >
+            <Button type="text" icon={<MoreOutlined />} aria-label="Amallar" />
+          </Dropdown>
+        ),
+    },
+  ];
 
   return (
     <div>
       <PageHeader
         title="O'qituvchilar"
-        subtitle={data ? `${teachers.length} ta o'qituvchi` : undefined}
-        actions={
+        subtitle={data ? `${data.teachers.length} ta o'qituvchi` : undefined}
+        extra={
           <>
-            <button className="btn-secondary" onClick={exportExcel} disabled={!data?.teachers.length}>
-              <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Excel
-            </button>
-            <button className="btn-primary" onClick={() => setEditing({})}>
-              <Plus className="h-4 w-4" /> Qo'shish
-            </button>
+            <Button icon={<FileExcelOutlined />} onClick={exportExcel} disabled={!data?.teachers.length}>
+              Excel
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({})}>
+              Qo'shish
+            </Button>
           </>
         }
       />
 
       {data?.missingPasswords > 0 && (
-        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center">
-          <AlertTriangle className="hidden h-5 w-5 shrink-0 sm:block" />
-          <p className="flex-1">
-            <b>{data.missingPasswords} ta o'qituvchining paroli saqlanmagan</b> — ular Excel eksport funksiyasidan oldin yaratilgan.
-            Excel'da ularning paroli chiqishi uchun yangi parol yarating.
-          </p>
-          <button className="btn shrink-0 bg-amber-600 text-white hover:bg-amber-700" onClick={regenerateMissing}>
-            <KeyRound className="h-4 w-4" /> Yangi parol yaratish
-          </button>
-        </div>
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title={`${data.missingPasswords} ta o'qituvchining paroli saqlanmagan`}
+          description="Ular Excel eksport funksiyasidan oldin yaratilgan. Excel'da ularning paroli chiqishi uchun yangi parol yarating."
+          action={
+            <Button size="small" type="primary" icon={<KeyOutlined />} onClick={regenerateMissing}>
+              Yangi parol yaratish
+            </Button>
+          }
+        />
       )}
 
-      <div className="relative mb-4">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input className="input pl-10" placeholder="Ism yoki login bo'yicha qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
+      <Input
+        allowClear
+        size="large"
+        prefix={<SearchOutlined />}
+        placeholder="Ism yoki login bo'yicha qidirish"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        style={{ marginBottom: 16 }}
+      />
 
-      <div className="mb-4">
-        <ErrorBox error={actionError || error} />
-      </div>
+      <ErrorAlert error={error} onRetry={reload} style={{ marginBottom: 16 }} />
 
-      {loading && !data ? (
-        <Spinner />
-      ) : !teachers.length ? (
-        <EmptyState icon={Users} title={q ? 'Hech narsa topilmadi' : "O'qituvchilar yo'q"}>
-          {!q && "Excel jadval yuklanganda o'qituvchilar avtomatik qo'shiladi."}
-        </EmptyState>
-      ) : (
-        <div className="card divide-y divide-slate-100 overflow-hidden">
-          {teachers.map((t) => (
-            <div key={t.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link to={`/admin/teachers/${t.id}`} className="font-medium hover:text-indigo-600">
-                    {t.fullName}
-                  </Link>
-                  {!t.isActive && <Badge tone="red">Bloklangan</Badge>}
-                  {t.passwordStatus === 'changed' && <Badge tone="green">Parolni o'zgartirgan</Badge>}
-                  {t.passwordStatus === 'unknown' && <Badge tone="amber">Parol saqlanmagan</Badge>}
-                </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-slate-500">
-                  {t.position && <span>{t.position}</span>}
-                  {t.scheduleName && t.scheduleName !== t.fullName && <span>Jadvalda: {t.scheduleName}</span>}
-                  <span className="font-mono">{t.username}</span>
-                  <span>{t.lessonsCount} ta dars</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                <IconBtn as={Link} to={`/admin/teachers/${t.id}`} title="Jadvalni ko'rish" icon={CalendarRange} />
-                <IconBtn onClick={() => setEditing(t)} title="Tahrirlash" icon={Pencil} />
-                <IconBtn onClick={() => resetPassword(t)} title="Parolni tiklash" icon={KeyRound} />
-                <IconBtn onClick={() => toggleActive(t)} title={t.isActive ? 'Bloklash' : 'Blokdan chiqarish'} icon={t.isActive ? Lock : Unlock} />
-                <IconBtn onClick={() => remove(t)} title="O'chirish" icon={Trash2} danger />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <Table
+        rowKey="id"
+        loading={loading && !data}
+        dataSource={data?.teachers ?? []}
+        columns={columns}
+        pagination={{ pageSize: 50, hideOnSinglePage: true, showSizeChanger: false }}
+        locale={{ emptyText: q ? 'Hech narsa topilmadi' : "O'qituvchilar yo'q — Excel jadval yuklanganda avtomatik qo'shiladi" }}
+        size={screens.md ? 'middle' : 'small'}
+        style={{ overflow: 'hidden' }}
+      />
 
       <TeacherForm
         teacher={editing}
@@ -138,6 +211,7 @@ export default function TeachersPage() {
         onSaved={(creds) => {
           setEditing(null);
           if (creds) setCredentials(creds);
+          else message.success('Saqlandi');
           reload();
         }}
       />
@@ -146,52 +220,33 @@ export default function TeachersPage() {
   );
 }
 
-function IconBtn({ as: As = 'button', icon: Icon, title, danger, ...props }) {
-  return (
-    <As
-      title={title}
-      aria-label={title}
-      className={`rounded-lg border border-slate-200 p-2 transition ${
-        danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-600 hover:bg-slate-100'
-      }`}
-      {...props}
-    >
-      <Icon className="h-4 w-4" />
-    </As>
-  );
-}
-
 function TeacherForm({ teacher, onClose, onSaved }) {
   const isNew = teacher && !teacher.id;
-  const [form, setForm] = useState({});
+  const [form] = Form.useForm();
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [prev, setPrev] = useState(null);
 
-  // Modal ochilganda formani to'ldirish
-  if (teacher !== prev) {
-    setPrev(teacher);
-    setForm({
-      fullName: teacher?.fullName || '',
-      position: teacher?.position || '',
-      scheduleName: teacher?.scheduleName || '',
-      username: teacher?.username || '',
+  useEffect(() => {
+    if (!teacher) return;
+    setError(null);
+    form.setFieldsValue({
+      fullName: teacher.fullName || '',
+      position: teacher.position || '',
+      scheduleName: teacher.scheduleName || '',
+      username: teacher.username || '',
       password: '',
     });
-    setError(null);
-  }
+  }, [teacher, form]);
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const submit = async ({ password, ...values }) => {
     setBusy(true);
     setError(null);
     try {
       if (isNew) {
-        const d = await api.post('/admin/teachers', form);
+        const d = await api.post('/admin/teachers', { ...values, password });
         onSaved({ fullName: d.teacher.fullName, username: d.teacher.username, password: d.password });
       } else {
-        const { password: _password, ...changes } = form;
-        await api.patch(`/admin/teachers/${teacher.id}`, changes);
+        await api.patch(`/admin/teachers/${teacher.id}`, values);
         onSaved(null);
       }
     } catch (err) {
@@ -201,78 +256,87 @@ function TeacherForm({ teacher, onClose, onSaved }) {
     }
   };
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
   return (
-    <Modal open={Boolean(teacher)} onClose={onClose} title={isNew ? "Yangi o'qituvchi" : 'Tahrirlash'}>
-      <form onSubmit={submit} className="space-y-4">
-        <div>
-          <label className="label">F.I.Sh.</label>
-          <input className="input" value={form.fullName} onChange={set('fullName')} placeholder="Karimov Alisher Bahodirovich" required autoFocus />
-        </div>
-        <div>
-          <label className="label">Unvon <span className="font-normal text-slate-400">(ixtiyoriy)</span></label>
-          <input className="input" value={form.position} onChange={set('position')} placeholder="kat.o'qit, PhD, dots." />
-        </div>
-        <div>
-          <label className="label">Jadvaldagi nomi</label>
-          <input className="input" value={form.scheduleName} onChange={set('scheduleName')} placeholder="R.Sobirov" />
-          <p className="mt-1 text-xs text-slate-500">
-            Excel jadvalida qanday yozilgan bo'lsa, xuddi shunday kiriting — import darslarni shu nom bo'yicha biriktiradi.
-          </p>
-        </div>
-        <div>
-          <label className="label">Login {isNew && <span className="font-normal text-slate-400">(ixtiyoriy)</span>}</label>
-          <input
-            className="input font-mono"
-            value={form.username}
-            onChange={set('username')}
-            placeholder={isNew ? 'avtomatik yaratiladi' : ''}
-            autoCapitalize="none"
-            required={!isNew}
-          />
-        </div>
+    <Modal
+      open={Boolean(teacher)}
+      title={isNew ? "Yangi o'qituvchi" : 'Tahrirlash'}
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      okText="Saqlash"
+      cancelText="Bekor qilish"
+      confirmLoading={busy}
+      forceRender
+    >
+      <Form form={form} layout="vertical" onFinish={submit} requiredMark="optional" style={{ marginTop: 16 }}>
+        <Form.Item name="fullName" label="F.I.Sh." rules={[{ required: true, whitespace: true, message: 'F.I.Sh. kiritilishi shart' }]}>
+          <Input placeholder="Karimov Alisher Bahodirovich" autoFocus />
+        </Form.Item>
+        <Form.Item name="position" label="Unvon">
+          <Input placeholder="kat.o'qit, PhD, dots." />
+        </Form.Item>
+        <Form.Item
+          name="scheduleName"
+          label="Jadvaldagi nomi"
+          extra="Excel jadvalida qanday yozilgan bo'lsa, xuddi shunday kiriting — import darslarni shu nom bo'yicha biriktiradi."
+        >
+          <Input placeholder="R.Sobirov" />
+        </Form.Item>
+        <Form.Item
+          name="username"
+          label="Login"
+          rules={[
+            { required: !isNew, message: 'Loginni kiriting' },
+            { pattern: /^[a-zA-Z0-9._-]{3,32}$/, message: "3–32 ta lotin harf, raqam, '.', '_' yoki '-'" },
+          ]}
+        >
+          <Input placeholder={isNew ? 'avtomatik yaratiladi' : ''} autoCapitalize="none" style={{ fontFamily: 'monospace' }} />
+        </Form.Item>
         {isNew && (
-          <div>
-            <label className="label">Parol <span className="font-normal text-slate-400">(ixtiyoriy)</span></label>
-            <input className="input font-mono" value={form.password} onChange={set('password')} placeholder="avtomatik yaratiladi" />
-          </div>
+          <Form.Item name="password" label="Parol">
+            <Input placeholder="avtomatik yaratiladi" style={{ fontFamily: 'monospace' }} />
+          </Form.Item>
         )}
-        <ErrorBox error={error} />
-        <div className="flex gap-2">
-          <button type="button" className="btn-secondary flex-1" onClick={onClose}>Bekor qilish</button>
-          <button className="btn-primary flex-1" disabled={busy}>Saqlash</button>
-        </div>
-      </form>
+        <ErrorAlert error={error} />
+      </Form>
     </Modal>
   );
 }
 
 function CredentialsModal({ creds, onClose }) {
-  const [copied, setCopied] = useState(false);
+  const { message } = App.useApp();
   if (!creds) return null;
   const text = `${creds.fullName}\nLogin: ${creds.username}\nParol: ${creds.password}\nManzil: ${window.location.origin}`;
 
   const copy = async () => {
     await navigator.clipboard?.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    message.success('Nusxa olindi');
   };
 
   return (
-    <Modal open onClose={onClose} title="Kirish ma'lumotlari">
-      <p className="mb-3 text-sm text-red-600">Parol faqat hozir ko'rsatiladi. O'qituvchiga yetkazing.</p>
-      <div className="space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
-        <div className="font-medium">{creds.fullName}</div>
-        <div>Login: <span className="font-mono font-semibold">{creds.username}</span></div>
-        <div>Parol: <span className="font-mono font-semibold">{creds.password}</span></div>
-      </div>
-      <div className="mt-4 flex gap-2">
-        <button className="btn-secondary flex-1" onClick={() => downloadCredentialsCsv([creds], `${creds.username}.csv`)}>CSV</button>
-        <button className="btn-primary flex-1" onClick={copy}>
-          <Copy className="h-4 w-4" /> {copied ? 'Nusxa olindi' : 'Nusxa olish'}
-        </button>
-      </div>
+    <Modal
+      open
+      title="Kirish ma'lumotlari"
+      onCancel={onClose}
+      footer={[
+        <Button key="csv" icon={<DownloadOutlined />} onClick={() => downloadCredentialsCsv([creds], `${creds.username}.csv`)}>
+          CSV
+        </Button>,
+        <Button key="copy" type="primary" icon={<CopyOutlined />} onClick={copy}>
+          Nusxa olish
+        </Button>,
+      ]}
+    >
+      <Alert type="info" showIcon title="Parol keyinroq O'qituvchilar → Excel orqali ham yuklab olinadi." style={{ marginBottom: 16 }} />
+      <Descriptions
+        bordered
+        column={1}
+        size="small"
+        items={[
+          { key: 'n', label: "F.I.Sh.", children: creds.fullName },
+          { key: 'l', label: 'Login', children: <Text code copyable>{creds.username}</Text> },
+          { key: 'p', label: 'Parol', children: <Text code copyable>{creds.password}</Text> },
+        ]}
+      />
     </Modal>
   );
 }

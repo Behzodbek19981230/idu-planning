@@ -1,5 +1,5 @@
 import WeekSchedule from '../../components/WeekSchedule.jsx';
-import { ErrorBox, PageHeader, Spinner } from '../../components/ui.jsx';
+import { ErrorAlert, Loading, PageHeader } from '../../components/ui.jsx';
 import { useApi } from '../../lib/useApi.js';
 
 export default function WeekPage() {
@@ -7,11 +7,8 @@ export default function WeekPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Haftalik jadval"
-        subtitle={data ? `Jami ${data.lessons.length} ta dars` : undefined}
-      />
-      {loading && !data ? <Spinner /> : error ? <ErrorBox error={error} onRetry={reload} /> : <WeekSchedule lessons={data.lessons} />}
+      <PageHeader title="Haftalik jadval" subtitle={data ? `Jami ${data.lessons.length} ta dars` : undefined} />
+      {loading && !data ? <Loading /> : error ? <ErrorAlert error={error} onRetry={reload} /> : <WeekSchedule lessons={data.lessons} />}
     </div>
   );
 }

@@ -1,15 +1,8 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { DoorOpen, User } from 'lucide-react';
-import { DAYS, WEEK_LABEL } from '../lib/schedule.js';
-
-export const TYPE_STYLE = {
-  "Ma'ruza": { card: 'border-l-sky-500 bg-sky-50/70', chip: 'bg-sky-100 text-sky-800' },
-  Amaliy: { card: 'border-l-emerald-500 bg-emerald-50/70', chip: 'bg-emerald-100 text-emerald-800' },
-  Seminar: { card: 'border-l-amber-500 bg-amber-50/70', chip: 'bg-amber-100 text-amber-800' },
-  Laboratoriya: { card: 'border-l-violet-500 bg-violet-50/70', chip: 'bg-violet-100 text-violet-800' },
-};
-const DEFAULT_STYLE = { card: 'border-l-slate-400 bg-slate-50', chip: 'bg-slate-200 text-slate-700' };
+import { Tag, Typography, theme } from 'antd';
+import { EnvironmentOutlined, UserOutlined } from '@ant-design/icons';
+import { DAYS, TYPE_COLORS, WEEK_LABEL } from '../lib/schedule.js';
 
 /** Dars ustunlarini uzluksiz bo'laklarga ajratadi: [1,2,3,6] -> [[1,3],[6,6]] */
 function runs(indices) {
@@ -49,30 +42,52 @@ function matches(lesson, q) {
 }
 
 function LessonTile({ lesson, query }) {
-  const style = TYPE_STYLE[lesson.lessonType] || DEFAULT_STYLE;
+  const { token } = theme.useToken();
+  const color = TYPE_COLORS[lesson.lessonType] || 'geekblue';
   const hit = matches(lesson, query);
+
   return (
     <div
-      className={`flex h-full flex-col gap-1 rounded-lg border border-l-4 border-slate-200 p-2 text-left text-xs shadow-sm transition ${style.card} ${
-        query ? (hit ? 'ring-2 ring-indigo-500' : 'opacity-25') : ''
-      }`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        height: '100%',
+        padding: 8,
+        fontSize: 12,
+        borderRadius: token.borderRadius,
+        background: token[`${color}1`],
+        border: `1px solid ${token[`${color}3`]}`,
+        borderLeft: `4px solid ${token[`${color}6`]}`,
+        opacity: query && !hit ? 0.25 : 1,
+        outline: query && hit ? `2px solid ${token.colorPrimary}` : 'none',
+        transition: 'opacity .15s',
+      }}
     >
-      <div className="break-words font-semibold leading-snug text-slate-900">{lesson.subject}</div>
-      <div className="flex flex-wrap gap-1">
-        {lesson.lessonType && <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${style.chip}`}>{lesson.lessonType}</span>}
+      <Typography.Text strong style={{ fontSize: 12.5, lineHeight: 1.35, wordBreak: 'break-word' }}>
+        {lesson.subject}
+      </Typography.Text>
+      <div>
+        {lesson.lessonType && (
+          <Tag color={TYPE_COLORS[lesson.lessonType]} style={{ fontSize: 10, lineHeight: '16px', marginInlineEnd: 4 }}>
+            {lesson.lessonType}
+          </Tag>
+        )}
         {WEEK_LABEL[lesson.weekType] && (
-          <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700">{WEEK_LABEL[lesson.weekType]}</span>
+          <Tag color="red" style={{ fontSize: 10, lineHeight: '16px' }}>
+            {WEEK_LABEL[lesson.weekType]}
+          </Tag>
         )}
       </div>
-      <Link to={`/admin/teachers/${lesson.teacher.id}`} className="flex items-center gap-1 text-slate-600 hover:text-indigo-700">
-        <User className="h-3 w-3 shrink-0" />
-        <span className="truncate">{lesson.teacher.fullName}</span>
+      <Link to={`/admin/teachers/${lesson.teacher.id}`} style={{ color: token.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <UserOutlined style={{ marginRight: 4 }} />
+        {lesson.teacher.fullName}
       </Link>
       {lesson.room && (
-        <div className="mt-auto flex items-center gap-1 font-semibold text-red-600">
-          <DoorOpen className="h-3 w-3 shrink-0" />
+        <span style={{ marginTop: 'auto', fontWeight: 600, color: token.colorError }}>
+          <EnvironmentOutlined style={{ marginRight: 4 }} />
           {lesson.room}
-        </div>
+        </span>
       )}
     </div>
   );
@@ -83,29 +98,47 @@ function LessonTile({ lesson, query }) {
  * Bir nechta guruhga birgalikda o'tiladigan dars (potok) ularning ustiga cho'zilib turadi.
  */
 export default function Timetable({ groups, slots, lessons, days, query }) {
+  const { token } = theme.useToken();
   const cols = groups.length;
+  const line = `1px solid ${token.colorBorderSecondary}`;
+  const headBg = token.colorFillAlter;
   let row = 2; // 1-qator — sarlavha
 
+  const headCell = {
+    position: 'sticky',
+    top: 0,
+    background: token.colorBgContainer,
+    backgroundImage: `linear-gradient(${headBg}, ${headBg})`,
+    borderBottom: line,
+    borderRight: line,
+    padding: '10px 8px',
+    fontSize: 12,
+    fontWeight: 600,
+    textAlign: 'center',
+    color: token.colorTextHeading,
+  };
+
   return (
-    <div className="max-h-[calc(100dvh-16rem)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:max-h-[calc(100dvh-14rem)]">
+    <div
+      style={{
+        maxHeight: 'calc(100dvh - 15rem)',
+        overflow: 'auto',
+        border: line,
+        borderRadius: token.borderRadiusLG,
+        background: token.colorBgContainer,
+      }}
+    >
       <div
-        className="grid text-sm"
-        // Ustunlar ekranga teng bo'linadi; juda ko'p guruh bo'lsa — gorizontal scroll
         style={{
+          display: 'grid',
+          // Ustunlar ekranga teng bo'linadi; juda ko'p guruh bo'lsa — gorizontal scroll
           gridTemplateColumns: `4.25rem repeat(${cols}, minmax(0, 1fr))`,
           width: `max(100%, ${4.25 + cols * 8.75}rem)`,
         }}
       >
-        {/* Sarlavha */}
-        <div className="sticky left-0 top-0 z-30 border-b border-r border-slate-200 bg-slate-100 px-2 py-2.5 text-xs font-semibold text-slate-500" style={{ gridRow: 1, gridColumn: 1 }}>
-          Vaqt
-        </div>
+        <div style={{ ...headCell, left: 0, zIndex: 3, textAlign: 'left', color: token.colorTextSecondary, gridRow: 1, gridColumn: 1 }}>Vaqt</div>
         {groups.map((g, i) => (
-          <div
-            key={g}
-            className="sticky top-0 z-20 border-b border-r border-slate-200 bg-slate-100 px-2 py-2.5 text-center text-xs font-semibold text-slate-700"
-            style={{ gridRow: 1, gridColumn: i + 2 }}
-          >
+          <div key={g} style={{ ...headCell, zIndex: 2, gridRow: 1, gridColumn: i + 2 }}>
             {g}
           </div>
         ))}
@@ -115,13 +148,10 @@ export default function Timetable({ groups, slots, lessons, days, query }) {
           const dayRow = row++;
           return (
             <Fragment key={day}>
-              <div
-                className="border-b border-slate-200 bg-indigo-50/60"
-                style={{ gridRow: dayRow, gridColumn: `1 / ${cols + 2}` }}
-              >
-                <div className="sticky left-0 inline-flex items-baseline gap-2 px-3 py-1.5">
-                  <span className="font-semibold text-indigo-800">{DAYS[day - 1].name}</span>
-                  <span className="text-xs text-indigo-500">{dayLessons.length} ta dars</span>
+              <div style={{ gridRow: dayRow, gridColumn: `1 / ${cols + 2}`, background: token.colorPrimaryBg, borderBottom: line }}>
+                <div style={{ position: 'sticky', left: 0, display: 'inline-flex', alignItems: 'baseline', gap: 8, padding: '6px 12px' }}>
+                  <span style={{ fontWeight: 600, color: token.colorPrimaryText }}>{DAYS[day - 1].name}</span>
+                  <span style={{ fontSize: 12, color: token.colorPrimaryTextHover }}>{dayLessons.length} ta dars</span>
                 </div>
               </div>
 
@@ -133,23 +163,45 @@ export default function Timetable({ groups, slots, lessons, days, query }) {
                 return (
                   <Fragment key={slot.startTime}>
                     <div
-                      className="sticky left-0 z-10 flex flex-col justify-center border-b border-r border-slate-200 bg-white px-2 py-2 text-center leading-tight"
-                      style={{ gridRow: r, gridColumn: 1 }}
+                      style={{
+                        gridRow: r,
+                        gridColumn: 1,
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: '8px 4px',
+                        lineHeight: 1.3,
+                        background: token.colorBgContainer,
+                        borderBottom: line,
+                        borderRight: line,
+                      }}
                     >
-                      {slot.pairNumber && <span className="text-[10px] text-slate-400">{slot.pairNumber}-juftlik</span>}
-                      <span className="text-xs font-semibold text-slate-800">{slot.startTime}</span>
-                      <span className="text-[11px] text-slate-500">{slot.endTime}</span>
+                      {slot.pairNumber && <span style={{ fontSize: 10, color: token.colorTextTertiary }}>{slot.pairNumber}-juftlik</span>}
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>{slot.startTime}</span>
+                      <span style={{ fontSize: 11, color: token.colorTextSecondary }}>{slot.endTime}</span>
                     </div>
                     {groups.map((g, i) =>
                       covered.has(i) ? null : (
-                        <div key={g} className="min-h-16 border-b border-r border-slate-100" style={{ gridRow: r, gridColumn: i + 2 }} />
+                        <div key={g} style={{ gridRow: r, gridColumn: i + 2, minHeight: 64, borderBottom: line, borderRight: line }} />
                       )
                     )}
                     {cells.map((c) => (
                       <div
                         key={c.from}
-                        className="flex flex-col gap-1.5 border-b border-r border-slate-100 p-1.5"
-                        style={{ gridRow: r, gridColumn: `${c.from + 2} / ${c.to + 3}` }}
+                        style={{
+                          gridRow: r,
+                          gridColumn: `${c.from + 2} / ${c.to + 3}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                          padding: 6,
+                          borderBottom: line,
+                          borderRight: line,
+                        }}
                       >
                         {c.lessons.map((l) => (
                           <LessonTile key={l.id} lesson={l} query={query} />
