@@ -58,28 +58,39 @@ git pull
 ## 3. PostgreSQL bazasi
 
 ```bash
-DB_PASS=$(openssl rand -hex 24); echo "Baza paroli: $DB_PASS"
-sudo -u postgres psql -c "CREATE USER idu WITH PASSWORD '$DB_PASS';"
-sudo -u postgres psql -c "CREATE DATABASE idu_planning OWNER idu;"
+cd /var/www/idu-planning
+DB_PASS=$(openssl rand -hex 24)
+
+# Foydalanuvchi bo'lmasa yaratadi, bo'lsa — parolini yangilaydi
+sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='idu'" | grep -q 1 \
+  && sudo -u postgres psql -c "ALTER USER idu WITH PASSWORD '$DB_PASS';" \
+  || sudo -u postgres psql -c "CREATE USER idu WITH PASSWORD '$DB_PASS';"
+
+# Baza bo'lmasa yaratadi
+sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='idu_planning'" | grep -q 1 \
+  || sudo -u postgres psql -c "CREATE DATABASE idu_planning OWNER idu;"
+
+# Ulanishni tekshirish — "1" chiqishi kerak
+psql "postgresql://idu:$DB_PASS@localhost:5432/idu_planning" -tc "select 1"
 ```
 
-Chiqqan parolni keyingi qadamda `DATABASE_URL` ga yozasiz.
+`$DB_PASS` ni keyingi qadamda `.env` ga yozamiz — shu terminal oynasini yopmang.
 
 ## 4. Backend sozlamalari
 
 ```bash
 cd /var/www/idu-planning/server
 cp .env.production.example .env
-openssl rand -base64 48   # JWT_SECRET uchun
-openssl rand -base64 48   # PASSWORD_SECRET uchun
-nano .env
+
+# Baza manzili (3-qadamdagi $DB_PASS) va tasodifiy sirlar avtomatik yoziladi
+sed -i "s#^DATABASE_URL=.*#DATABASE_URL=\"postgresql://idu:$DB_PASS@localhost:5432/idu_planning?schema=public\"#" .env
+sed -i "s#^JWT_SECRET=.*#JWT_SECRET=$(openssl rand -hex 48)#" .env
+sed -i "s#^PASSWORD_SECRET=.*#PASSWORD_SECRET=$(openssl rand -hex 48)#" .env
+
+nano .env   # faqat ADMIN_PASSWORD ni yozing — admin uchun kuchli parol
 ```
 
-To'ldirish kerak bo'lganlar:
-
-- `DATABASE_URL` — 3-qadamdagi parol bilan
-- `JWT_SECRET`, `PASSWORD_SECRET` — yuqoridagi ikki xil tasodifiy qiymat
-- `ADMIN_PASSWORD` — admin uchun kuchli parol
+> Bu qadam faqat **birinchi o'rnatishda** bajariladi. Keyin qayta ishga tushirmang — `PASSWORD_SECRET` almashib, saqlangan parollar o'qilmay qoladi.
 
 > `PASSWORD_SECRET` ni keyin **o'zgartirmang** — o'zgarsa, saqlangan boshlang'ich parollar Excel'ga chiqmay qoladi.
 > Server standart (`change-me…`, `admin123`) qiymatlar bilan ishga tushmaydi — bu ataylab qilingan.
