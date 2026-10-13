@@ -1,5 +1,8 @@
 const TOKEN_KEY = 'idu_token';
 
+// Production: https://api.idu-schedule.universal-uz.uz ; dev'da bo'sh — Vite proxy ishlatiladi
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 export const tokenStore = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (t) => localStorage.setItem(TOKEN_KEY, t),
@@ -27,7 +30,7 @@ async function request(path, { method = 'GET', body, raw = false } = {}) {
 
   let res;
   try {
-    res = await fetch(`/api${path}`, { method, headers, body: payload });
+    res = await fetch(`${API_BASE}/api${path}`, { method, headers, body: payload });
   } catch {
     throw new ApiError("Server bilan aloqa yo'q. Internetni tekshiring.", 0);
   }

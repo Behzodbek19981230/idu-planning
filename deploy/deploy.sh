@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Yangilash: bash deploy/deploy.sh   (/var/www/idu-planning ichida)
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+echo "==> Kodni yangilash"
+git pull --ff-only
+
+echo "==> Backend bog'liqliklari va Prisma client"
+npm --prefix server ci --include=dev
+
+echo "==> Baza migratsiyalari"
+npm --prefix server run db:migrate
+
+echo "==> Frontend build"
+npm --prefix client ci --include=dev
+npm --prefix client run build
+
+echo "==> API'ni qayta ishga tushirish"
+pm2 startOrReload ecosystem.config.cjs --update-env
+pm2 save
+
+echo "==> Tayyor"
+curl -fsS http://127.0.0.1:${PORT:-4000}/api/health && echo

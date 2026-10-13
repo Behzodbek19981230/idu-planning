@@ -37,11 +37,7 @@ Telefondan sinash: kompyuter va telefon bir Wi‑Fi tarmoqda bo'lsa, `npm run de
 
 ### Production
 
-```bash
-npm run build      # client/dist yig'iladi
-npm run db:migrate
-npm start          # Express API va frontendni bitta portda beradi
-```
+Serverga o'rnatish (nginx, PM2, PostgreSQL, HTTPS) — [DEPLOY.md](DEPLOY.md). Yangilash: `bash deploy/deploy.sh`.
 
 ## Excel formati
 

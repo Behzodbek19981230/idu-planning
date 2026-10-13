@@ -10,7 +10,10 @@ import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.js';
 
 const app = express();
-app.use(cors());
+app.set('trust proxy', 1); // nginx ortida
+app.disable('x-powered-by');
+// CORS_ORIGIN berilmasa (dev) — hamma joydan ruxsat
+app.use(cors(config.corsOrigins.length ? { origin: config.corsOrigins } : undefined));
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
@@ -21,7 +24,7 @@ app.use('/api', (_req, res) => res.status(404).json({ error: 'Topilmadi' }));
 
 // Production: build qilingan frontendni shu serverdan berish
 const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
-if (fs.existsSync(clientDist)) {
+if (config.serveClient && fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
   app.get('/{*splat}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 }
@@ -32,6 +35,6 @@ app.use((err, _req, res, _next) => {
 });
 
 await ensureAdmin();
-app.listen(config.port, () => {
-  console.log(`Server http://localhost:${config.port} manzilida ishlamoqda`);
+app.listen(config.port, config.host, () => {
+  console.log(`Server http://${config.host}:${config.port} manzilida ishlamoqda`);
 });
