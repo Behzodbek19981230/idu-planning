@@ -10,22 +10,28 @@ import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.js';
 
 const app = express();
+const cors = require('cors');
+
 const allowedOrigins = [
   'https://idu-schedule.universal-uz.uz',
 ];
 
 app.use(
   cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error(`CORS ruxsat bermadi: ${origin}`));
-    },
+    origin: allowedOrigins,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: [
+      'GET',
+      'POST',
+      'PUT',
+      'PATCH',
+      'DELETE',
+      'OPTIONS',
+    ],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+    ],
   })
 );
 
