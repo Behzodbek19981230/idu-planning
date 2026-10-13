@@ -10,36 +10,25 @@ import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.js';
 
 const app = express();
-app.set('trust proxy', 1); // nginx ortida
-app.disable('x-powered-by');
-// CORS_ORIGIN berilmasa (dev) — hamma joydan ruxsat.
-// Domen bo'yicha solishtiriladi: http/https, "www." va oxiridagi "/" farqi hisobga olinmaydi.
-const hostOf = (url) => {
-  try {
-    return new URL(url).host.replace(/^www\./, '').toLowerCase();
-  } catch {
-    return null;
-  }
-};
-const allowedHosts = new Set(config.corsOrigins.map(hostOf).filter(Boolean));
-const rejected = new Set();
+const allowedOrigins = [
+  'https://idu-schedule.universal-uz.uz',
+];
+
 app.use(
-  cors(
-    allowedHosts.size
-      ? {
-          origin(origin, cb) {
-            if (!origin || allowedHosts.has(hostOf(origin))) return cb(null, true);
-            if (!rejected.has(origin)) {
-              rejected.add(origin);
-              console.warn(`[cors] rad etildi: ${origin} (ruxsat: ${[...allowedHosts].join(', ')} — server/.env CORS_ORIGIN)`);
-            }
-            cb(null, false);
-          },
-          maxAge: 86400,
-        }
-      : undefined
-  )
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS ruxsat bermadi: ${origin}`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
 );
+
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
