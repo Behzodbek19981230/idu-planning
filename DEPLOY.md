@@ -3,7 +3,7 @@
 | Qism     | Domen                                  | Qanday ishlaydi                                  |
 | -------- | -------------------------------------- | ------------------------------------------------ |
 | Frontend | `idu-schedule.universal-uz.uz`         | nginx `client/dist` papkasini beradi             |
-| Backend  | `api.idu-schedule.universal-uz.uz`     | nginx → `127.0.0.1:4000` (PM2 ostida Node.js)    |
+| Backend  | `api.idu-schedule.universal-uz.uz`     | nginx → `127.0.0.1:4010` (PM2 ostida Node.js)    |
 
 Loyiha papkasi: `/var/www/idu-planning`. Barcha buyruqlar `root` sifatida.
 
@@ -40,10 +40,10 @@ apt-get install -y nginx postgresql certbot python3-certbot-nginx
 npm install -g pm2
 ```
 
-4000-port bandligini tekshiring (serverda boshqa loyihalar bo'lsa):
+4010-port bandligini tekshiring (serverda boshqa loyihalar bo'lsa):
 
 ```bash
-ss -ltnp | grep ':4000 ' || echo "4000 bo'sh"
+ss -ltnp | grep ':4010 ' || echo "4010 bo'sh"
 ```
 
 Band bo'lsa — boshqa port tanlang va uni `server/.env` (`PORT=`) hamda nginx konfiguratsiyasida (`proxy_pass`) bir xil qilib yozing.

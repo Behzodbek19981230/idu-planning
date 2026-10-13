@@ -26,9 +26,10 @@ if (isProduction) {
   const weak = [];
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.startsWith('change-me')) weak.push('JWT_SECRET');
   if (!process.env.PASSWORD_SECRET || process.env.PASSWORD_SECRET.startsWith('change-me')) weak.push('PASSWORD_SECRET');
-  if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD === 'admin123') weak.push('ADMIN_PASSWORD');
   if (weak.length) {
-    throw new Error(`server/.env da quyidagilarni o'rnating (uzun tasodifiy qiymat): ${weak.join(', ')}`);
+    // throw emas: PM2 ushlab qolib, jarayon "online" bo'lib osilib turmasligi uchun
+    console.error(`[config] server/.env da quyidagilarni o'rnating (uzun tasodifiy qiymat): ${weak.join(', ')}`);
+    process.exit(1);
   }
 }
 

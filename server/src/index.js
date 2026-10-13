@@ -34,7 +34,22 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Serverda xatolik yuz berdi' });
 });
 
-await ensureAdmin();
-app.listen(config.port, config.host, () => {
-  console.log(`Server http://${config.host}:${config.port} manzilida ishlamoqda`);
-});
+try {
+  await ensureAdmin();
+} catch (err) {
+  console.error(`[startup] ${err.message}`);
+  process.exit(1);
+}
+
+app
+  .listen(config.port, config.host, () => {
+    console.log(`Server http://${config.host}:${config.port} manzilida ishlamoqda`);
+  })
+  .on('error', (err) => {
+    console.error(
+      err.code === 'EADDRINUSE'
+        ? `[startup] ${config.port}-port band — server/.env da boshqa PORT tanlang (va nginx proxy_pass ni ham o'zgartiring)`
+        : `[startup] ${err.message}`
+    );
+    process.exit(1);
+  });
