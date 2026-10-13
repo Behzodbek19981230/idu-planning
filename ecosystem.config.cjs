@@ -6,7 +6,8 @@ module.exports = {
       cwd: __dirname + '/server',
       script: 'src/index.js',
       env: { NODE_ENV: 'production' },
-      instances: 1,
+      // fork: ES modul + top-level await uchun; bitta nusxaga cluster kerak emas
+      exec_mode: 'fork',
       autorestart: true,
       max_memory_restart: '400M',
       time: true,
