@@ -1,0 +1,15 @@
+{
+  "name": "idu-planning",
+  "private": true,
+  "description": "O'qituvchilar uchun dars jadvali (Excel import, admin va o'qituvchi rollari)",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n api,web -c blue,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "start": "npm --prefix server start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

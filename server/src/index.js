@@ -1,0 +1,37 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
+import cors from 'cors';
+import { config } from './config.js';
+import { ensureAdmin } from './db.js';
+import authRoutes from './routes/auth.js';
+import teacherRoutes from './routes/teacher.js';
+import adminRoutes from './routes/admin.js';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.use('/api/auth', authRoutes);
+app.use('/api/me', teacherRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api', (_req, res) => res.status(404).json({ error: 'Topilmadi' }));
+
+// Production: build qilingan frontendni shu serverdan berish
+const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('/{*splat}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
+
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Serverda xatolik yuz berdi' });
+});
+
+await ensureAdmin();
+app.listen(config.port, () => {
+  console.log(`Server http://localhost:${config.port} manzilida ishlamoqda`);
+});

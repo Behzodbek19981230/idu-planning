@@ -1,0 +1,81 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+}
+
+enum WeekType {
+  ALL
+  ODD
+  EVEN
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  fullName     String   @map("full_name")
+  // Excel jadvalida qanday yozilgani ("R.Sobirov") — import shu bo'yicha moslaydi
+  scheduleName String?  @unique @map("schedule_name")
+  position     String? // unvon: "kat.o'qit", "PhD", "dots." ...
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  // Admin bergan boshlang'ich parol (AES-256-GCM bilan shifrlangan) — Excel eksport uchun.
+  // O'qituvchi parolini o'zi o'zgartirganda o'chiriladi.
+  initialPassword String?  @map("initial_password")
+  passwordChanged Boolean  @default(false) @map("password_changed")
+  role         Role
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  lessons Lesson[]
+  uploads Upload[]
+
+  @@map("users")
+}
+
+model Upload {
+  id           Int      @id @default(autoincrement())
+  filename     String
+  uploadedById Int?     @map("uploaded_by_id")
+  rowsCount    Int      @default(0) @map("rows_count")
+  mode         String   @default("replace")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  uploadedBy User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  lessons    Lesson[]
+
+  @@map("uploads")
+}
+
+model Lesson {
+  id         Int      @id @default(autoincrement())
+  teacherId  Int      @map("teacher_id")
+  uploadId   Int?     @map("upload_id")
+  dayOfWeek  Int      @map("day_of_week") // 1 = Dushanba ... 7 = Yakshanba
+  pairNumber Int?     @map("pair_number")
+  startTime  String   @map("start_time") // "HH:MM"
+  endTime    String   @map("end_time")
+  subject    String
+  groupName  String?  @map("group_name")
+  room       String?
+  building   String?
+  lessonType String?  @map("lesson_type")
+  weekType   WeekType @default(ALL) @map("week_type")
+  sheetName  String?  @map("sheet_name") // Excel varag'i (kurs): "1-kurs kunduzgi 1-10", "Kechki 1-2-kurs"
+  groups     Json? // [{ name, sheet, col }] — umumiy jadvalni Excel ko'rinishida chizish uchun
+
+  teacher User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  upload  Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@index([teacherId, dayOfWeek, startTime])
+  @@map("lessons")
+}
