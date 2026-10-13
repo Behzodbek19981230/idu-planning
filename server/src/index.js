@@ -10,7 +10,6 @@ import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.js';
 
 const app = express();
-const cors = require('cors');
 
 const allowedOrigins = [
   'https://idu-schedule.universal-uz.uz',
