@@ -4,6 +4,9 @@ O'qituvchilar o'z darslarining kuni, vaqti va joyini telefon yoki kompyuterdan k
 
 - **Admin** Excel (.xlsx) faylidan dars jadvalini yuklaydi, o'qituvchilarga login/parol beradi.
 - **O'qituvchi** login qilib, bugungi va haftalik darslarini ko'radi (hozirgi / keyingi dars, qolgan vaqt, xona, bino, guruh).
+- **Zam dekan** o'ziga biriktirilgan guruhlarga dars jadvalini fayl (rasm, PDF yoki Excel) qilib yuboradi.
+- **Dekan** barcha guruhlar va yuborilgan jadvallarni ko'radi, guruhlarni zam dekanlarga biriktiradi, istalgan guruhga jadval yubora oladi.
+- **Talabalar** login qilmasdan `/jadval` sahifasida guruhini tanlab, so'nggi yuborilgan jadvalni ko'radi.
 - Interfeys Ant Design asosida, telefon va kompyuterga moslashgan; **yorug' / qorong'i / tizim** mavzusi sarlavhadagi tugma yoki Profil sahifasidan tanlanadi.
 
 ## Texnologiyalar
@@ -69,6 +72,19 @@ Admin panelidagi **Import → Shablon** tugmasi namunaviy fayl beradi: har bir q
 - Tizimda yo'q nom uchun login (`sobirov.r`, `siddiqova.sh`) va parol avtomatik yaratiladi va bir marta ko'rsatiladi (CSV qilib yuklab olish mumkin).
 - Juftlik vaqti katakda yo'q bo'lsa, standart qiymat olinadi: `server/src/config.js` → `PAIR_TIMES`.
 
+## Rollar va guruh jadvallari
+
+| Rol | Kim | Nima qila oladi |
+| --- | --- | --- |
+| `ADMIN` | Administrator | Hammasi + **Xodimlar** bo'limida dekan/zam dekan hisoblarini yaratadi |
+| `DEAN` | Dekan | Barcha guruhlar: qo'shish, tahrirlash, zam dekanga biriktirish, jadval yuborish |
+| `VICE_DEAN` | Zam dekan | Faqat o'z guruhlari: jadval yuborish, o'zi yuborgan faylni o'chirish |
+| `TEACHER` | O'qituvchi | O'z darslari (Bugun / Hafta) |
+
+- Bitta fayl bir vaqtda bir nechta guruhga yuborilishi mumkin (masalan, butun kurs uchun bitta PDF). Har bir guruhda yuborilganlar tarixi saqlanadi, talabalarga eng oxirgisi ko'rsatiladi.
+- Fayllar bazada saqlanadi, hajmi 10 MB gacha. Turi kengaytma va fayl ichidagi imzo bo'yicha tekshiriladi.
+- Zam dekanlar va ularning guruhlarini birdaniga kiritish: `npm run db:seed-groups` (ro'yxat `server/scripts/seed-groups.js` da; qayta ishga tushirsa bo'ladi, yangi hisoblar login/paroli konsolga chiqadi).
+
 ## Login/parollarni Excel'ga chiqarish
 
 **O'qituvchilar → Excel** tugmasi barcha o'qituvchilarning F.I.Sh., unvon, login, parol, holat va darslar sonini `.xlsx` qilib beradi (chop etishga tayyor).
@@ -81,12 +97,16 @@ Admin panelidagi **Import → Shablon** tugmasi namunaviy fayl beradi: har bir q
 
 ```
 server/
-  prisma/schema.prisma     # User, Upload, Lesson
+  prisma/schema.prisma     # User, Upload, Lesson, Group, ScheduleFile
   src/excel.js             # Excel parser va shablon
   src/routes/auth.js       # login, me, parol o'zgartirish
   src/routes/teacher.js    # /api/me/lessons
-  src/routes/admin.js      # o'qituvchilar, jadval, import
+  src/routes/admin.js      # o'qituvchilar, xodimlar, jadval, import
+  src/routes/groups.js     # guruhlar va ularga yuborilgan jadval fayllari
+  src/routes/public.js     # /api/public — talabalar uchun (loginsiz)
 client/
   src/pages/teacher/       # Bugun, Hafta
-  src/pages/admin/         # Panel, Import, O'qituvchilar, Jadval
+  src/pages/admin/         # Panel, Import, O'qituvchilar, Jadval, Xodimlar
+  src/pages/groups/        # Guruhlar (dekan, zam dekan, admin)
+  src/pages/PublicSchedulePage.jsx  # /jadval — talabalar uchun
 ```

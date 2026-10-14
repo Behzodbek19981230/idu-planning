@@ -12,6 +12,8 @@ datasource db {
 enum Role {
   ADMIN
   TEACHER
+  DEAN // dekan
+  VICE_DEAN // zam dekan
 }
 
 enum WeekType {
@@ -36,10 +38,43 @@ model User {
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  lessons Lesson[]
-  uploads Upload[]
+  lessons       Lesson[]
+  uploads       Upload[]
+  // Zam dekanga biriktirilgan guruhlar
+  curatedGroups Group[]        @relation("GroupCurator")
+  scheduleFiles ScheduleFile[]
 
   @@map("users")
+}
+
+model Group {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // "Uz-5/26"
+  course    Int? // 1, 2, 3, 4
+  curatorId Int?     @map("curator_id") // mas'ul zam dekan
+  createdAt DateTime @default(now()) @map("created_at")
+
+  curator User?          @relation("GroupCurator", fields: [curatorId], references: [id], onDelete: SetNull)
+  files   ScheduleFile[]
+
+  @@map("groups")
+}
+
+// Zam dekan guruh(lar)ga yuborgan dars jadvali: rasm, PDF yoki Excel
+model ScheduleFile {
+  id           Int      @id @default(autoincrement())
+  filename     String
+  mimeType     String   @map("mime_type")
+  size         Int
+  data         Bytes
+  note         String?
+  uploadedById Int?     @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  uploadedBy User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  groups     Group[]
+
+  @@map("schedule_files")
 }
 
 model Upload {

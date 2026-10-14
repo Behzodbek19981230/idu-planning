@@ -35,7 +35,7 @@ export async function requireAuth(req, res, next) {
   next();
 }
 
-export const requireRole = (role) => (req, res, next) => {
-  if (req.user?.role !== role) return res.status(403).json({ error: "Ruxsat yo'q" });
+export const requireRole = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user?.role)) return res.status(403).json({ error: "Ruxsat yo'q" });
   next();
 };

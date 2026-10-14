@@ -234,6 +234,106 @@ router.get('/teachers/:id/lessons', async (req, res) => {
   res.json({ teacher, lessons });
 });
 
+// ---------- Dekan va zam dekanlar ----------
+
+const STAFF_ROLES = ['DEAN', 'VICE_DEAN'];
+
+router.get('/staff', async (_req, res) => {
+  const staff = await prisma.user.findMany({
+    where: { role: { in: STAFF_ROLES } },
+    select: {
+      id: true,
+      fullName: true,
+      username: true,
+      role: true,
+      isActive: true,
+      initialPassword: true,
+      passwordChanged: true,
+      curatedGroups: { select: { id: true, name: true, course: true } },
+    },
+    orderBy: [{ role: 'asc' }, { fullName: 'asc' }],
+  });
+  res.json({
+    staff: staff.map(({ initialPassword, passwordChanged, curatedGroups, ...u }) => ({
+      ...u,
+      groups: curatedGroups.sort((a, b) => naturalSort(a.name, b.name)),
+      // Hali o'zgartirilmagan boshlang'ich parol — admin xodimga qayta berishi uchun
+      password: passwordChanged ? null : decrypt(initialPassword),
+      passwordStatus: passwordStatus({ initialPassword, passwordChanged }),
+    })),
+  });
+});
+
+router.post('/staff', async (req, res) => {
+  const fullName = String(req.body?.fullName || '').replace(/\s+/g, ' ').trim();
+  if (!fullName) return res.status(400).json({ error: 'F.I.Sh. kiritilishi shart' });
+  const role = req.body?.role;
+  if (!STAFF_ROLES.includes(role)) return res.status(400).json({ error: "Lavozim noto'g'ri" });
+
+  let username = String(req.body?.username || '').trim().toLowerCase();
+  if (username) {
+    if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+      return res.status(400).json({ error: "Login 3–32 ta lotin harf, raqam, '.', '_' yoki '-' bo'lishi kerak" });
+    }
+    if (await prisma.user.findUnique({ where: { username } })) {
+      return res.status(409).json({ error: 'Bu login band' });
+    }
+  } else {
+    const taken = new Set((await prisma.user.findMany({ select: { username: true } })).map((u) => u.username));
+    username = uniqueUsername(fullName, taken);
+  }
+
+  const password = String(req.body?.password || '') || generatePassword();
+  const user = await prisma.user.create({
+    data: { fullName, username, role, ...(await passwordFields(password)) },
+  });
+  res.status(201).json({ user: { id: user.id, fullName, username }, password });
+});
+
+router.patch('/staff/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const data = {};
+  if (req.body?.fullName !== undefined) {
+    data.fullName = String(req.body.fullName).replace(/\s+/g, ' ').trim();
+    if (!data.fullName) return res.status(400).json({ error: "F.I.Sh. bo'sh bo'lmasligi kerak" });
+  }
+  if (req.body?.username !== undefined) {
+    data.username = String(req.body.username).trim().toLowerCase();
+    if (!/^[a-z0-9._-]{3,32}$/.test(data.username)) {
+      return res.status(400).json({ error: "Login formati noto'g'ri" });
+    }
+    const other = await prisma.user.findUnique({ where: { username: data.username } });
+    if (other && other.id !== id) return res.status(409).json({ error: 'Bu login band' });
+  }
+  if (req.body?.role !== undefined) {
+    if (!STAFF_ROLES.includes(req.body.role)) return res.status(400).json({ error: "Lavozim noto'g'ri" });
+    data.role = req.body.role;
+  }
+  if (req.body?.isActive !== undefined) data.isActive = Boolean(req.body.isActive);
+
+  const result = await prisma.user.updateMany({ where: { id, role: { in: STAFF_ROLES } }, data });
+  if (!result.count) return res.status(404).json({ error: 'Xodim topilmadi' });
+  // Dekan bo'lib qolgan foydalanuvchi endi guruhlarga mas'ul emas
+  if (data.role === 'DEAN') await prisma.group.updateMany({ where: { curatorId: id }, data: { curatorId: null } });
+  res.json({ ok: true });
+});
+
+router.post('/staff/:id/reset-password', async (req, res) => {
+  const password = generatePassword();
+  const result = await prisma.user.updateMany({
+    where: { id: Number(req.params.id), role: { in: STAFF_ROLES } },
+    data: await passwordFields(password),
+  });
+  if (!result.count) return res.status(404).json({ error: 'Xodim topilmadi' });
+  res.json({ password });
+});
+
+router.delete('/staff/:id', async (req, res) => {
+  const result = await prisma.user.deleteMany({ where: { id: Number(req.params.id), role: { in: STAFF_ROLES } } });
+  if (!result.count) return res.status(404).json({ error: 'Xodim topilmadi' });
+  res.json({ ok: true });
+});
+
 // ---------- Dars jadvali ----------
 
 const naturalSort = (a, b) => a.localeCompare(b, 'uz', { numeric: true, sensitivity: 'base' });

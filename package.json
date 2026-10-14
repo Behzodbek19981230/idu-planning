@@ -7,6 +7,7 @@
     "dev": "concurrently -n api,web -c blue,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
     "build": "npm --prefix client run build",
     "db:migrate": "npm --prefix server run db:migrate",
+    "db:seed-groups": "npm --prefix server run db:seed-groups",
     "start": "npm --prefix server start"
   },
   "devDependencies": {

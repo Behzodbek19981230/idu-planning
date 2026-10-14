@@ -3,6 +3,8 @@ import { Avatar, Dropdown, Flex, Grid, Layout as AntLayout, Menu, Typography, th
 import {
   CalendarOutlined,
   DashboardOutlined,
+  FolderOpenOutlined,
+  IdcardOutlined,
   LogoutOutlined,
   ScheduleOutlined,
   TableOutlined,
@@ -11,6 +13,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../lib/auth.jsx';
+import { ROLE_LABELS } from '../lib/roles.js';
 import ThemeSwitch from './ThemeSwitch.jsx';
 
 const NAV = {
@@ -24,9 +27,22 @@ const NAV = {
     { key: '/admin/import', label: 'Import', icon: <UploadOutlined /> },
     { key: '/admin/teachers', label: "O'qituvchilar", icon: <TeamOutlined /> },
     { key: '/admin/schedule', label: 'Jadval', icon: <TableOutlined /> },
+    { key: '/groups', label: 'Guruhlar', icon: <FolderOpenOutlined /> },
+    { key: '/admin/staff', label: 'Xodimlar', icon: <IdcardOutlined /> },
+    { key: '/profile', label: 'Profil', icon: <UserOutlined /> },
+  ],
+  DEAN: [
+    { key: '/groups', label: 'Guruhlar', icon: <FolderOpenOutlined /> },
+    { key: '/profile', label: 'Profil', icon: <UserOutlined /> },
+  ],
+  VICE_DEAN: [
+    { key: '/groups', label: 'Guruhlarim', icon: <FolderOpenOutlined /> },
     { key: '/profile', label: 'Profil', icon: <UserOutlined /> },
   ],
 };
+
+// Mobil pastki menyuga sig'adigan bandlar soni — ortiqcha bo'lsa Profil foydalanuvchi menyusida qoladi
+const BOTTOM_NAV_MAX = 6;
 
 /** Joriy manzilga eng uzun mos keladigan menyu bandi */
 function activeKey(items, pathname) {
@@ -96,9 +112,9 @@ export default function Layout() {
                   <Typography.Text strong ellipsis style={{ maxWidth: isMobile ? 150 : 220 }}>
                     {user.fullName}
                   </Typography.Text>
-                  {user.role === 'TEACHER' && (
+                  {user.role !== 'ADMIN' && (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      O'qituvchi
+                      {ROLE_LABELS[user.role]}
                     </Typography.Text>
                   )}
                 </Flex>
@@ -120,7 +136,13 @@ export default function Layout() {
         <Outlet />
       </AntLayout.Content>
 
-      {isMobile && <BottomNav items={items} selected={selected} onSelect={navigate} />}
+      {isMobile && (
+        <BottomNav
+          items={items.length > BOTTOM_NAV_MAX ? items.filter((i) => i.key !== '/profile') : items}
+          selected={selected}
+          onSelect={navigate}
+        />
+      )}
     </AntLayout>
   );
 }

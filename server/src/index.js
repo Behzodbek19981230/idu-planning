@@ -8,6 +8,8 @@ import { ensureAdmin } from './db.js';
 import authRoutes from './routes/auth.js';
 import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.js';
+import groupRoutes from './routes/groups.js';
+import publicRoutes from './routes/public.js';
 
 const app = express();
 
@@ -40,6 +42,8 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/me', teacherRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/public', publicRoutes);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Topilmadi' }));
 
 // Production: build qilingan frontendni shu serverdan berish

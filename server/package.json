@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
+    "db:seed-groups": "node scripts/seed-groups.js",
     "postinstall": "prisma generate"
   },
   "author": "",

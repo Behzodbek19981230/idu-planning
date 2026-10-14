@@ -302,7 +302,7 @@ function TeacherForm({ teacher, onClose, onSaved }) {
   );
 }
 
-function CredentialsModal({ creds, onClose }) {
+export function CredentialsModal({ creds, onClose, hint = "Parol keyinroq O'qituvchilar → Excel orqali ham yuklab olinadi." }) {
   const { message } = App.useApp();
   if (!creds) return null;
   const text = `${creds.fullName}\nLogin: ${creds.username}\nParol: ${creds.password}\nManzil: ${window.location.origin}`;
@@ -326,7 +326,7 @@ function CredentialsModal({ creds, onClose }) {
         </Button>,
       ]}
     >
-      <Alert type="info" showIcon title="Parol keyinroq O'qituvchilar → Excel orqali ham yuklab olinadi." style={{ marginBottom: 16 }} />
+      <Alert type="info" showIcon title={hint} style={{ marginBottom: 16 }} />
       <Descriptions
         bordered
         column={1}

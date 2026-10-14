@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Alert, Button, Card, Flex, Form, Input, Typography, theme } from 'antd';
 import { CalendarOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuth } from '../lib/auth.jsx';
@@ -69,6 +70,9 @@ export default function LoginPage() {
             Login va parolni administrator beradi.
           </Typography.Paragraph>
         </Card>
+        <Typography.Text style={{ textAlign: 'center' }}>
+          Talabamisiz? <Link to="/jadval">Guruh jadvalini ko'rish</Link>
+        </Typography.Text>
       </Flex>
     </Flex>
   );
