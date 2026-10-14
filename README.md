@@ -81,7 +81,7 @@ Admin panelidagi **Import → Shablon** tugmasi namunaviy fayl beradi: har bir q
 | `VICE_DEAN` | Zam dekan | Faqat o'z guruhlari: jadval yuborish, o'zi yuborgan faylni o'chirish |
 | `TEACHER` | O'qituvchi | O'z darslari (Bugun / Hafta) |
 
-- **Jadvaldan yaratish** (Jadval yuborish oynasidagi asosiy rejim): kurs va guruhlar tanlanadi, import qilingan umumiy jadvaldan Excel'dagidek to'r tuziladi (kun × juftlik, potok darslar birlashtirilgan katakda) va **PDF**, **Excel** yoki **rasm (PNG)** qilib yuklab olinadi yoki guruhlarga yuboriladi. Bitta umumiy fayl yoki har guruhga alohida fayl tanlash mumkin. Excel import formatida chiqadi — uni qayta import qilsa ham bo'ladi.
+- **Dars jadvali** (Guruhlar sahifasidagi tugma): kurs va guruhlar tanlanadi, import qilingan umumiy jadvaldan Excel'dagidek to'r tuziladi (kun × juftlik, potok darslar birlashtirilgan katakda) va **PDF**, **Excel** yoki **rasm (PNG)** qilib yuklab olinadi yoki guruhlarga yuboriladi. Bitta umumiy fayl yoki har guruhga alohida fayl tanlash mumkin. Excel import formatida chiqadi — uni qayta import qilsa ham bo'ladi.
 - Buning uchun har bir guruhda **jadvaldagi nomi** bo'lishi kerak — Excel'dagi ustun nomi (`Uz-5/26` → `Uz-5-26`). Guruhlar → Tahrirlash oynasida ro'yxatdan tanlanadi; bog'lanmagan guruhlar "Jadvalga bog'lanmagan" belgisi bilan ko'rsatiladi.
 - Bitta fayl bir vaqtda bir nechta guruhga yuborilishi mumkin (masalan, butun kurs uchun bitta PDF). Har bir guruhda yuborilganlar tarixi saqlanadi, talabalarga eng oxirgisi ko'rsatiladi.
 - Fayllar bazada saqlanadi, hajmi 10 MB gacha. Turi kengaytma va fayl ichidagi imzo bo'yicha tekshiriladi.

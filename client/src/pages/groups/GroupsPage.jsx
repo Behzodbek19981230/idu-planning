@@ -28,7 +28,7 @@ import {
   MoreOutlined,
   PlusOutlined,
   SearchOutlined,
-  SendOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
 import { api } from '../../lib/api.js';
 import { useApi } from '../../lib/useApi.js';
@@ -41,7 +41,7 @@ import {
   formatSize,
 } from '../../lib/files.jsx';
 import { ErrorAlert, PageHeader } from '../../components/ui.jsx';
-import SendModal from './SendModal.jsx';
+import TimetableModal from './TimetableModal.jsx';
 
 const { Text } = Typography;
 
@@ -54,7 +54,7 @@ export default function GroupsPage() {
   const { data, error, loading, reload } = useApi('/groups');
   const [q, setQ] = useState('');
   const [curator, setCurator] = useState(null);
-  const [sendFor, setSendFor] = useState(null); // null | [groupId, ...]
+  const [timetableFor, setTimetableFor] = useState(null); // null | [groupId, ...]
   const [history, setHistory] = useState(null);
   const [editing, setEditing] = useState(null); // null | {} (yangi) | group
 
@@ -92,7 +92,7 @@ export default function GroupsPage() {
     });
 
   const actions = (g) => [
-    { key: 'send', icon: <SendOutlined />, label: 'Jadval yuborish', onClick: () => setSendFor([g.id]) },
+    { key: 'timetable', icon: <TableOutlined />, label: 'Dars jadvali', onClick: () => setTimetableFor([g.id]) },
     { key: 'history', icon: <HistoryOutlined />, label: `Yuborilganlar (${g.filesCount})`, onClick: () => setHistory(g) },
     { key: 'link', icon: <LinkOutlined />, label: 'Talabalar uchun havola', onClick: () => copyLink(g) },
     ...(canManage
@@ -184,8 +184,8 @@ export default function GroupsPage() {
                 Guruh qo'shish
               </Button>
             )}
-            <Button type="primary" icon={<SendOutlined />} onClick={() => setSendFor([])} disabled={!data?.groups.length}>
-              Jadval yuborish
+            <Button type="primary" icon={<TableOutlined />} onClick={() => setTimetableFor([])} disabled={!data?.groups.length}>
+              Dars jadvali
             </Button>
           </>
         }
@@ -234,12 +234,12 @@ export default function GroupsPage() {
         style={{ overflow: 'hidden' }}
       />
 
-      <SendModal
-        groupIds={sendFor}
+      <TimetableModal
+        groupIds={timetableFor}
         groups={data?.groups ?? []}
-        onClose={() => setSendFor(null)}
+        onClose={() => setTimetableFor(null)}
         onSent={(count) => {
-          setSendFor(null);
+          setTimetableFor(null);
           message.success(`Jadval ${count} ta guruhga yuborildi`);
           reload();
         }}
