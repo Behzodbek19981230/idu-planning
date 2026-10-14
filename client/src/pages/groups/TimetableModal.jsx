@@ -1,31 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Checkbox, Flex, Grid, Input, Modal, Segmented, Select, Spin, Tag, Typography } from 'antd';
-import { DownloadOutlined, SendOutlined, ShareAltOutlined } from '@ant-design/icons';
+import { DownloadOutlined, SendOutlined } from '@ant-design/icons';
 import { api } from '../../lib/api.js';
 import { useApi } from '../../lib/useApi.js';
 import { EXPORT_FORMATS, generateTimetableFile, saveFile } from '../../lib/exportTimetable.jsx';
-import { fileUrl } from '../../lib/files.jsx';
 import { NeedsClickError, shareToTelegram } from '../../lib/share.js';
 import ExportTimetable from '../../components/ExportTimetable.jsx';
 import { ErrorAlert } from '../../components/ui.jsx';
 
 const { Text } = Typography;
 
-const absolute = (url) => new URL(url, window.location.origin).href;
-
 /**
  * Tanlangan guruhlarning dars jadvali (Excel'dagi ko'rinishda) —
- * PDF / Excel / rasm qilib yuklab olish yoki guruhlarga yuborish.
+ * PDF / Excel / rasm qilib yuklab olish yoki Telegram orqali yuborish.
  */
-export default function TimetableModal({ groupIds, groups, onClose, onSent }) {
+export default function TimetableModal({ groupIds, groups, onClose, onShared }) {
   const screens = Grid.useBreakpoint();
   const [selected, setSelected] = useState([]);
   const [format, setFormat] = useState('pdf');
   const [title, setTitle] = useState('');
   const [separate, setSeparate] = useState(false);
   const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(null); // null | 'download' | 'send' | 'share'
-  // Tizimga yuborildi, lekin Telegram oynasini ochish uchun foydalanuvchi bosishi kerak
+  const [busy, setBusy] = useState(null); // null | 'download' | 'telegram'
+  // Fayl tayyor, lekin Telegram oynasini ochish uchun foydalanuvchi bosishi kerak
   const [pendingShare, setPendingShare] = useState(null);
 
   useEffect(() => {
@@ -104,23 +101,7 @@ export default function TimetableModal({ groupIds, groups, onClose, onSent }) {
       if (kind === 'download') {
         items.forEach((i) => saveFile(i.file));
       } else {
-        const links = [];
-        for (const item of items) {
-          const fd = new FormData();
-          fd.append('file', item.file);
-          fd.append('groupIds', item.groupIds.join(','));
-          const { file } = await api.post('/groups/files', fd);
-          // Bitta guruh — talabalar sahifasi (doim oxirgi jadval), bir nechta — faylning o'zi
-          const group = item.groupIds.length === 1 && ordered.find((g) => g.id === item.groupIds[0]);
-          links.push(group ? absolute(`/jadval?guruh=${encodeURIComponent(group.name)}`) : absolute(fileUrl(file.id)));
-        }
-        const share = {
-          files: items.map((i) => i.file),
-          text: split ? 'Dars jadvali' : title.trim() || autoTitle,
-          links,
-          count: ids.length,
-        };
-        await openShare(share);
+        await openShare({ files: items.map((i) => i.file), text: split ? 'Dars jadvali' : title.trim() || autoTitle });
       }
     } catch (err) {
       setError(err);
@@ -132,8 +113,7 @@ export default function TimetableModal({ groupIds, groups, onClose, onSent }) {
   /** Telegram ulashish oynasini ochish; brauzer ruxsat bermasa — tugma ko'rsatiladi */
   const openShare = async (share) => {
     try {
-      await shareToTelegram(share);
-      onSent(share.count);
+      onShared(await shareToTelegram(share));
     } catch (err) {
       if (!(err instanceof NeedsClickError)) throw err;
       setPendingShare(share);
@@ -141,7 +121,7 @@ export default function TimetableModal({ groupIds, groups, onClose, onSent }) {
   };
 
   const shareAgain = async () => {
-    setBusy('share');
+    setBusy('telegram');
     setError(null);
     try {
       await openShare(pendingShare);
@@ -162,16 +142,16 @@ export default function TimetableModal({ groupIds, groups, onClose, onSent }) {
       footer={
         pendingShare ? (
           <Flex wrap gap={8} justify="flex-end">
-            <Button onClick={() => onSent(pendingShare.count)}>Yopish</Button>
-            <Button type="primary" icon={<ShareAltOutlined />} loading={busy === 'share'} onClick={shareAgain}>
-              Telegramda ulashish
+            <Button onClick={() => setPendingShare(null)}>Orqaga</Button>
+            <Button type="primary" icon={<SendOutlined />} loading={busy === 'telegram'} onClick={shareAgain}>
+              Telegramni ochish
             </Button>
           </Flex>
         ) : (
           <Flex wrap gap={8} justify="flex-end" align="center">
             <Segmented options={EXPORT_FORMATS} value={format} onChange={setFormat} style={{ marginRight: 'auto' }} />
-            <Button icon={<SendOutlined />} loading={busy === 'send'} disabled={Boolean(busy)} onClick={() => act('send')}>
-              Guruhlarga yuborish
+            <Button icon={<SendOutlined />} loading={busy === 'telegram'} disabled={Boolean(busy)} onClick={() => act('telegram')}>
+              Telegram orqali yuborish
             </Button>
             <Button type="primary" icon={<DownloadOutlined />} loading={busy === 'download'} disabled={Boolean(busy)} onClick={() => act('download')}>
               Yuklab olish
@@ -183,10 +163,10 @@ export default function TimetableModal({ groupIds, groups, onClose, onSent }) {
       <Flex vertical gap={16} style={{ marginTop: 16 }}>
         {pendingShare && (
           <Alert
-            type="success"
+            type="info"
             showIcon
-            title={`Jadval ${pendingShare.count} ta guruhga yuborildi`}
-            description="Telegram guruhiga ham yuborish uchun «Telegramda ulashish» tugmasini bosing."
+            title="Jadval tayyor"
+            description="Guruhni tanlash uchun «Telegramni ochish» tugmasini bosing."
           />
         )}
         <div>

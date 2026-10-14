@@ -238,10 +238,10 @@ export default function GroupsPage() {
         groupIds={timetableFor}
         groups={data?.groups ?? []}
         onClose={() => setTimetableFor(null)}
-        onSent={(count) => {
+        onShared={(result) => {
+          if (result === 'cancelled') return;
           setTimetableFor(null);
-          message.success(`Jadval ${count} ta guruhga yuborildi`);
-          reload();
+          if (result === 'fallback') message.info("Fayl yuklab olindi — Telegram'da guruhni tanlab, faylni biriktiring");
         }}
       />
       <HistoryDrawer group={history} canManage={canManage} onClose={() => setHistory(null)} onChanged={reload} />

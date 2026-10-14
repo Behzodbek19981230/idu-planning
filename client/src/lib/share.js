@@ -1,16 +1,20 @@
-/**
- * Fayllarni Telegramga ulashish.
- * Telefon (va Windows/macOS Chrome) — tizim "Ulashish" oynasi ochiladi, Telegram va guruh tanlanadi, fayl o'zi yuboriladi.
- * Fayl ulashib bo'lmaydigan brauzerda — Telegram'ning t.me/share oynasi havola bilan ochiladi.
- *
- * Qaytaradi: 'shared' | 'cancelled'. Brauzer ruxsat bermasa (foydalanuvchi bosishi kerak) — NeedsClickError.
- */
+import { saveFile } from './exportTimetable.jsx';
+
+/** Brauzer ulashish oynasini o'zi ochishga ruxsat bermadi — foydalanuvchi tugmani bosishi kerak */
 export class NeedsClickError extends Error {}
 
-export async function shareToTelegram({ files, text, links }) {
+/**
+ * Fayllarni Telegram orqali yuborish.
+ * Telefon va Windows/macOS Chrome/Edge — tizim "Ulashish" oynasi: Telegram → guruh tanlanadi, fayl o'zi yuboriladi.
+ * Fayl ulashib bo'lmaydigan brauzerda — fayl yuklab olinadi va Telegram'ning ulashish oynasi ochiladi
+ * (u yerda faylni qo'lda biriktirish kerak).
+ *
+ * Qaytaradi: 'shared' | 'cancelled' | 'fallback'
+ */
+export async function shareToTelegram({ files, text }) {
   if (navigator.canShare?.({ files })) {
     try {
-      await navigator.share({ files, title: text, text: [text, ...links].join('\n') });
+      await navigator.share({ files, title: text, text });
       return 'shared';
     } catch (err) {
       if (err.name === 'AbortError') return 'cancelled';
@@ -19,11 +23,9 @@ export async function shareToTelegram({ files, text, links }) {
       throw err;
     }
   }
-  const [url, ...rest] = links;
-  const share = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent([text, ...rest].join('\n'))}`;
-  const win = window.open(share, '_blank');
-  // Popup bloklangan — foydalanuvchi tugmani bosib ochishi kerak
+  const win = window.open(`https://t.me/share/url?url=${encodeURIComponent(text)}`, '_blank');
   if (!win) throw new NeedsClickError();
   win.opener = null;
-  return 'shared';
+  files.forEach(saveFile);
+  return 'fallback';
 }
