@@ -4,14 +4,17 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
-import { ensureAdmin } from './db.js';
+import { ensureAdmin, ensureSuperadmin } from './db.js';
 import authRoutes from './routes/auth.js';
 import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.js';
 import groupRoutes from './routes/groups.js';
 import publicRoutes from './routes/public.js';
+import superadminRoutes from './routes/superadmin.js';
 
 const app = express();
+// nginx orqali kelgan so'rovlarda haqiqiy IP (X-Forwarded-For) loglarga yozilishi uchun
+app.set('trust proxy', 'loopback');
 
 const allowedOrigins = [
   'https://idu-schedule.universal-uz.uz',
@@ -44,6 +47,7 @@ app.use('/api/me', teacherRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/superadmin', superadminRoutes);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Topilmadi' }));
 
 // Production: build qilingan frontendni shu serverdan berish
@@ -60,6 +64,7 @@ app.use((err, _req, res, _next) => {
 
 try {
   await ensureAdmin();
+  await ensureSuperadmin();
 } catch (err) {
   console.error(`[startup] ${err.message}`);
   process.exit(1);

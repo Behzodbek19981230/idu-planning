@@ -3,6 +3,7 @@ export const ROLE_LABELS = {
   TEACHER: "O'qituvchi",
   DEAN: 'Dekan',
   VICE_DEAN: 'Zam dekan',
+  SUPERADMIN: 'Superadmin',
 };
 
 /** Kirgandan keyin ochiladigan sahifa */
@@ -11,4 +12,5 @@ export const HOME = {
   TEACHER: '/',
   DEAN: '/groups',
   VICE_DEAN: '/groups',
+  SUPERADMIN: '/superadmin',
 };

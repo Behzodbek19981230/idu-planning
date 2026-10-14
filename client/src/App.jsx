@@ -15,6 +15,8 @@ import TeacherSchedulePage from './pages/admin/TeacherSchedulePage.jsx';
 import SchedulePage from './pages/admin/SchedulePage.jsx';
 import StaffPage from './pages/admin/StaffPage.jsx';
 import GroupsPage from './pages/groups/GroupsPage.jsx';
+import ReportsPage from './pages/superadmin/ReportsPage.jsx';
+import LogsPage from './pages/superadmin/LogsPage.jsx';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -47,7 +49,13 @@ export default function App() {
             <Route path="/week" element={<WeekPage />} />
           </>
         )}
-        {role !== 'TEACHER' && <Route path="/groups" element={<GroupsPage />} />}
+        {role === 'SUPERADMIN' && (
+          <>
+            <Route path="/superadmin" element={<ReportsPage />} />
+            <Route path="/superadmin/logs" element={<LogsPage />} />
+          </>
+        )}
+        {role !== 'TEACHER' && role !== 'SUPERADMIN' && <Route path="/groups" element={<GroupsPage />} />}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to={HOME[role]} replace />} />
       </Route>

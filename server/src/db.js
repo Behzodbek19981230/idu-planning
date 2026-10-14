@@ -21,3 +21,13 @@ export async function ensureAdmin() {
   });
   console.log(`Admin yaratildi: login="${username}"`);
 }
+
+export async function ensureSuperadmin() {
+  const exists = await prisma.user.findFirst({ where: { role: 'SUPERADMIN' } });
+  if (exists) return;
+  const { username, password, fullName } = config.superadmin;
+  await prisma.user.create({
+    data: { fullName, username: username.toLowerCase(), passwordHash: await bcrypt.hash(password, 10), role: 'SUPERADMIN' },
+  });
+  console.log(`Superadmin yaratildi: login="${username}"`);
+}

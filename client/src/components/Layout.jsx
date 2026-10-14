@@ -1,17 +1,21 @@
+import { useEffect } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom';
 import { Avatar, Dropdown, Flex, Grid, Layout as AntLayout, Menu, Typography, theme } from 'antd';
 import {
   CalendarOutlined,
+  BarChartOutlined,
   DashboardOutlined,
   FolderOpenOutlined,
   IdcardOutlined,
   LogoutOutlined,
+  ProfileOutlined,
   ScheduleOutlined,
   TableOutlined,
   TeamOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { ROLE_LABELS } from '../lib/roles.js';
 import ThemeSwitch from './ThemeSwitch.jsx';
@@ -37,6 +41,11 @@ const NAV = {
   ],
   VICE_DEAN: [
     { key: '/groups', label: 'Guruhlarim', icon: <FolderOpenOutlined /> },
+    { key: '/profile', label: 'Profil', icon: <UserOutlined /> },
+  ],
+  SUPERADMIN: [
+    { key: '/superadmin', label: 'Hisobotlar', icon: <BarChartOutlined /> },
+    { key: '/superadmin/logs', label: 'Loglar', icon: <ProfileOutlined /> },
     { key: '/profile', label: 'Profil', icon: <UserOutlined /> },
   ],
 };
@@ -66,6 +75,11 @@ export default function Layout() {
   const items = NAV[user.role];
   const selected = activeKey(items, pathname);
   const maxWidth = wide ? 1760 : 1152;
+
+  // Har bir ochilgan sahifa superadmin loglariga yoziladi
+  useEffect(() => {
+    api.post('/auth/page-view', { path: pathname }).catch(() => {});
+  }, [pathname]);
 
   const userMenu = {
     items: [

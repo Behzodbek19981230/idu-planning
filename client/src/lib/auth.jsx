@@ -30,6 +30,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Chiqishni logga yozish — natijasini kutmaymiz
+    api.post('/auth/logout').catch(() => {});
     tokenStore.clear();
     setUser(null);
   }, []);

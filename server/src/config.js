@@ -19,6 +19,12 @@ export const config = {
     password: process.env.ADMIN_PASSWORD || 'admin123',
     fullName: process.env.ADMIN_FULL_NAME || 'Administrator',
   },
+  // Loglar va hisobotlarni ko'radigan superadmin (birinchi ishga tushirishda yaratiladi)
+  superadmin: {
+    username: process.env.SUPERADMIN_USERNAME || 'superadmin',
+    password: process.env.SUPERADMIN_PASSWORD || 'superadmin',
+    fullName: process.env.SUPERADMIN_FULL_NAME || 'Superadmin',
+  },
 };
 
 // Production'da standart (xavfsiz bo'lmagan) qiymatlar bilan ishga tushirmaymiz

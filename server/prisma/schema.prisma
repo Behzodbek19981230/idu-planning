@@ -14,6 +14,7 @@ enum Role {
   TEACHER
   DEAN // dekan
   VICE_DEAN // zam dekan
+  SUPERADMIN // faqat loglar va hisobotlarni ko'radi
 }
 
 enum WeekType {
@@ -43,6 +44,7 @@ model User {
   // Zam dekanga biriktirilgan guruhlar
   curatedGroups Group[]        @relation("GroupCurator")
   scheduleFiles ScheduleFile[]
+  activityLogs  ActivityLog[]
 
   @@map("users")
 }
@@ -115,4 +117,30 @@ model Lesson {
 
   @@index([teacherId, dayOfWeek, startTime])
   @@map("lessons")
+}
+
+enum ActivityAction {
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  PAGE_VIEW
+}
+
+// Kim qachon kirgani va qaysi sahifalarni ochgani — faqat superadmin ko'radi
+model ActivityLog {
+  id        Int            @id @default(autoincrement())
+  userId    Int?           @map("user_id")
+  // Foydalanuvchi o'chirilsa ham log tushunarli qolishi uchun login saqlanadi
+  username  String
+  action    ActivityAction
+  path      String?
+  ip        String?
+  userAgent String?        @map("user_agent")
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("activity_logs")
 }
