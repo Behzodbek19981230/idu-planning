@@ -590,3 +590,93 @@ export async function buildCredentialsWorkbook(rows, site) {
 
   return wb.xlsx.writeBuffer();
 }
+
+const DAY_TITLES = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'];
+
+/** Katak matni import formatida: "Fan (A)" / "unvon O'qituvchi" / "Xona: 401"; toq/juft hafta — "/" bilan */
+function lessonRichText(lessons) {
+  const alternating = lessons.some((l) => l.weekType !== 'ALL');
+  const parts = [];
+  lessons.forEach((l, i) => {
+    if (i) parts.push({ text: alternating ? '\n/\n' : '\n' });
+    parts.push({ font: { bold: true, size: 10 }, text: `${l.subject}${l.type ? ` (${l.type})` : ''}\n` });
+    parts.push({ font: { size: 10 }, text: l.teacher });
+    if (l.room) parts.push({ font: { bold: true, size: 10, color: { argb: 'FFC00000' } }, text: `\nXona: ${l.room}` });
+  });
+  return parts;
+}
+
+/** Guruhlar dars jadvali — Excel'dagi kabi to'r (buildGroupTimetable natijasidan) */
+export async function buildTimetableWorkbook({ title, columns, days }) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Dars jadvali', {
+    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 },
+  });
+  const lastCol = 3 + columns.length;
+  ws.columns = [{ width: 6 }, { width: 8 }, { width: 13 }, ...columns.map(() => ({ width: 30 }))];
+
+  ws.mergeCells(1, 1, 1, lastCol);
+  Object.assign(ws.getCell(1, 1), {
+    value: title,
+    font: { bold: true, size: 14 },
+    alignment: { horizontal: 'center' },
+  });
+
+  const thin = { style: 'thin', color: { argb: 'FF7F7F7F' } };
+  const border = { top: thin, left: thin, bottom: thin, right: thin };
+  const center = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+  const header = ws.getRow(3);
+  header.values = ['Kun', 'Juftlik', 'Vaqti', ...columns];
+  header.height = 22;
+  header.eachCell((c) => {
+    c.font = { bold: true };
+    c.alignment = center;
+    c.border = border;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+  });
+
+  let r = 4;
+  for (const { day, rows } of days) {
+    const first = r;
+    for (const row of rows) {
+      const xr = ws.getRow(r);
+      xr.getCell(2).value = row.pairNumber ?? '';
+      xr.getCell(3).value = `${row.startTime}-${row.endTime}`;
+      let col = 4;
+      let maxLines = 2;
+      for (const cell of row.cells) {
+        if (cell.span > 1) ws.mergeCells(r, col, r, col + cell.span - 1);
+        if (cell.lessons.length) {
+          const rich = lessonRichText(cell.lessons);
+          xr.getCell(col).value = { richText: rich };
+          // Taxminiy qator balandligi: qatorlar soni (uzun fan nomi o'raladi)
+          const lines = rich.map((p) => p.text).join('').split('\n');
+          const width = 30 * cell.span;
+          maxLines = Math.max(maxLines, lines.reduce((n, s) => n + Math.max(1, Math.ceil(s.length / (width * 0.95))), 0));
+        }
+        col += cell.span;
+      }
+      xr.height = Math.max(30, maxLines * 13.5);
+      for (let c = 1; c <= lastCol; c++) {
+        const cell = xr.getCell(c);
+        cell.border = border;
+        cell.alignment = center;
+      }
+      r++;
+    }
+    if (r > first) {
+      ws.mergeCells(first, 1, r - 1, 1);
+      Object.assign(ws.getCell(first, 1), {
+        value: DAY_TITLES[day - 1],
+        font: { bold: true },
+        alignment: { ...center, textRotation: 90 },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } },
+      });
+    }
+  }
+
+  ws.views = [{ state: 'frozen', xSplit: 3, ySplit: 3 }];
+  ws.pageSetup.printTitlesRow = '3:3';
+  return wb.xlsx.writeBuffer();
+}

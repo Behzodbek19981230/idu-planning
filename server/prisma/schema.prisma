@@ -23,20 +23,20 @@ enum WeekType {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  fullName     String   @map("full_name")
+  id              Int      @id @default(autoincrement())
+  fullName        String   @map("full_name")
   // Excel jadvalida qanday yozilgani ("R.Sobirov") — import shu bo'yicha moslaydi
-  scheduleName String?  @unique @map("schedule_name")
-  position     String? // unvon: "kat.o'qit", "PhD", "dots." ...
-  username     String   @unique
-  passwordHash String   @map("password_hash")
+  scheduleName    String?  @unique @map("schedule_name")
+  position        String? // unvon: "kat.o'qit", "PhD", "dots." ...
+  username        String   @unique
+  passwordHash    String   @map("password_hash")
   // Admin bergan boshlang'ich parol (AES-256-GCM bilan shifrlangan) — Excel eksport uchun.
   // O'qituvchi parolini o'zi o'zgartirganda o'chiriladi.
   initialPassword String?  @map("initial_password")
   passwordChanged Boolean  @default(false) @map("password_changed")
-  role         Role
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
+  role            Role
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   lessons       Lesson[]
   uploads       Upload[]
@@ -48,11 +48,13 @@ model User {
 }
 
 model Group {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique // "Uz-5/26"
-  course    Int? // 1, 2, 3, 4
-  curatorId Int?     @map("curator_id") // mas'ul zam dekan
-  createdAt DateTime @default(now()) @map("created_at")
+  id            Int      @id @default(autoincrement())
+  name          String   @unique // "Uz-5/26"
+  course        Int? // 1, 2, 3, 4
+  // Import qilingan Excel jadvalidagi ustun nomi ("Uz-5-26") — darslar shu bo'yicha olinadi
+  timetableName String?  @map("timetable_name")
+  curatorId     Int?     @map("curator_id") // mas'ul zam dekan
+  createdAt     DateTime @default(now()) @map("created_at")
 
   curator User?          @relation("GroupCurator", fields: [curatorId], references: [id], onDelete: SetNull)
   files   ScheduleFile[]

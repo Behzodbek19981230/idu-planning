@@ -6,7 +6,7 @@ import { requireAuth, requireRole } from '../auth.js';
 import { buildCredentialsWorkbook, buildTemplateWorkbook, parseScheduleWorkbook } from '../excel.js';
 import { baseUsername, generatePassword } from '../credentials.js';
 import { decrypt, encrypt } from '../secret.js';
-import { lessonOrder, lessonSelect } from './teacher.js';
+import { lessonGroups, lessonOrder, lessonSelect } from './teacher.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN'));
@@ -337,15 +337,6 @@ router.delete('/staff/:id', async (req, res) => {
 // ---------- Dars jadvali ----------
 
 const naturalSort = (a, b) => a.localeCompare(b, 'uz', { numeric: true, sensitivity: 'base' });
-
-/** Eski importlarda groups bo'lmasa, groupName/sheetName dan tiklaymiz */
-const lessonGroups = (l) =>
-  Array.isArray(l.groups) && l.groups.length
-    ? l.groups
-    : (l.groupName || '')
-        .split(', ')
-        .filter(Boolean)
-        .map((name) => ({ name, sheet: l.sheetName || 'Jadval', col: null }));
 
 /**
  * Excel ko'rinishidagi umumiy jadval: tanlangan kurs (varaq) uchun

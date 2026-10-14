@@ -52,6 +52,7 @@ export const api = {
   post: (p, body) => request(p, { method: 'POST', body }),
   patch: (p, body) => request(p, { method: 'PATCH', body }),
   del: (p) => request(p, { method: 'DELETE' }),
+  blob: async (p) => (await request(p, { raw: true })).blob(),
   download: async (p, filename) => {
     const res = await request(p, { raw: true });
     const url = URL.createObjectURL(await res.blob());

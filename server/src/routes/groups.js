@@ -3,6 +3,8 @@ import multer from 'multer';
 import { prisma } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { SCHEDULE_FILE_MAX_BYTES, decodeFilename, detectScheduleFileType } from '../scheduleFiles.js';
+import { buildGroupTimetable, timetableColumns } from '../timetableGrid.js';
+import { buildTimetableWorkbook } from '../excel.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('ADMIN', 'DEAN', 'VICE_DEAN'));
@@ -25,6 +27,7 @@ export const fileMeta = {
 
 const naturalSort = (a, b) => a.localeCompare(b, 'uz', { numeric: true, sensitivity: 'base' });
 const cleanName = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+const parseIds = (v) => [...new Set(String(v || '').split(',').map(Number).filter(Number.isInteger))];
 
 function parseCourse(v) {
   if (v === undefined) return undefined;
@@ -47,6 +50,7 @@ router.get('/', async (req, res) => {
       id: true,
       name: true,
       course: true,
+      timetableName: true,
       curator: { select: { id: true, fullName: true } },
       files: { select: fileMeta, orderBy: { createdAt: 'desc' }, take: 1 },
       _count: { select: { files: true } },
@@ -62,6 +66,7 @@ router.get('/', async (req, res) => {
   res.json({
     canManage: canManage(req.user),
     curators,
+    timetableColumns: canManage(req.user) ? await timetableColumns() : [],
     groups: groups
       .sort((a, b) => (a.course ?? 99) - (b.course ?? 99) || naturalSort(a.name, b.name))
       .map(({ files, _count, ...g }) => ({ ...g, latestFile: files[0] ?? null, filesCount: _count.files })),
@@ -78,7 +83,10 @@ router.post('/', requireRole('ADMIN', 'DEAN'), async (req, res) => {
   if (await prisma.group.findUnique({ where: { name } })) {
     return res.status(409).json({ error: 'Bunday nomli guruh mavjud' });
   }
-  const group = await prisma.group.create({ data: { name, course: course ?? null, curatorId: curatorId ?? null } });
+  const timetableName = cleanName(req.body?.timetableName) || null;
+  const group = await prisma.group.create({
+    data: { name, course: course ?? null, curatorId: curatorId ?? null, timetableName },
+  });
   res.status(201).json({ group });
 });
 
@@ -97,6 +105,7 @@ router.patch('/:id', requireRole('ADMIN', 'DEAN'), async (req, res) => {
   const curatorId = await parseCurator(req.body?.curatorId);
   if (Number.isNaN(curatorId)) return res.status(400).json({ error: 'Zam dekan topilmadi' });
   if (curatorId !== undefined) data.curatorId = curatorId;
+  if (req.body?.timetableName !== undefined) data.timetableName = cleanName(req.body.timetableName) || null;
 
   const result = await prisma.group.updateMany({ where: { id }, data });
   if (!result.count) return res.status(404).json({ error: 'Guruh topilmadi' });
@@ -109,6 +118,41 @@ router.delete('/:id', requireRole('ADMIN', 'DEAN'), async (req, res) => {
   // Hech qaysi guruhga tegishli bo'lmay qolgan fayllar ham o'chiriladi
   await prisma.scheduleFile.deleteMany({ where: { groups: { none: {} } } });
   res.json({ ok: true });
+});
+
+/** ?groupIds=1,2 — ruxsat etilgan guruhlar, so'rovdagi tartibda */
+async function scopedGroups(req, res) {
+  const ids = parseIds(req.query.groupIds);
+  if (!ids.length) {
+    res.status(400).json({ error: 'Kamida bitta guruhni tanlang' });
+    return null;
+  }
+  const groups = await prisma.group.findMany({
+    where: { id: { in: ids }, ...groupScope(req.user) },
+    select: { id: true, name: true, timetableName: true },
+  });
+  if (groups.length !== ids.length) {
+    res.status(403).json({ error: "Tanlangan guruhlardan ba'zilari sizga biriktirilmagan" });
+    return null;
+  }
+  return ids.map((id) => groups.find((g) => g.id === id));
+}
+
+// Import qilingan umumiy jadvaldan tanlangan guruhlar uchun Excel ko'rinishidagi jadval
+router.get('/timetable', async (req, res) => {
+  const groups = await scopedGroups(req, res);
+  if (groups) res.json(await buildGroupTimetable(groups));
+});
+
+router.get('/timetable/xlsx', async (req, res) => {
+  const groups = await scopedGroups(req, res);
+  if (!groups) return;
+  const grid = await buildGroupTimetable(groups);
+  const title = cleanName(req.query.title).slice(0, 200) || `Dars jadvali: ${grid.columns.join(', ')}`;
+  const buffer = await buildTimetableWorkbook({ ...grid, title });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="dars-jadvali.xlsx"');
+  res.send(Buffer.from(buffer));
 });
 
 // Guruhga yuborilgan barcha jadvallar (eng yangisi birinchi)
@@ -145,7 +189,7 @@ router.post('/files', (req, res, next) => {
     return res.status(400).json({ error: 'Faqat rasm (PNG, JPG, WEBP), PDF yoki Excel (XLSX, XLS) fayl qabul qilinadi' });
   }
 
-  const ids = [...new Set(String(req.body.groupIds || '').split(',').map(Number).filter(Number.isInteger))];
+  const ids = parseIds(req.body.groupIds);
   if (!ids.length) return res.status(400).json({ error: 'Kamida bitta guruhni tanlang' });
   const allowed = await prisma.group.count({ where: { id: { in: ids }, ...groupScope(req.user) } });
   if (allowed !== ids.length) {

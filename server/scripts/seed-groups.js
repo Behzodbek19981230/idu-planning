@@ -36,6 +36,29 @@ const VICE_DEANS = [
   },
 ];
 
+// Guruh nomi import qilingan Excel jadvalida boshqacha yozilgan bo'lsa — qaysi ustunga mos kelishi.
+// Bu yerda bo'lmaganlari uchun "/" o'rniga "-" qo'yiladi: "Uz-5/26" -> "Uz-5-26"
+const TIMETABLE_NAMES = {
+  'Kechki-1/26': 'Uz-1-26 (kechki)',
+  'Kechki-2/26': 'Uz-2-26 (kechki)',
+  'Kiber-4/26': 'Kiber 4-25',
+  'Kiber-5/26': 'Kiber 5-25',
+  'Kiber-6/26': 'Kiber 6-25',
+  'Suniy-1/25': 'SI 1-25',
+  'Kechki-1/25': 'Kiber 1-25, SI 1-25 (kechki)',
+  'Kiber-1/24': 'Kiber 1-24',
+  'Ru-1': 'Ru-1-26',
+  'Ru-2': 'Ru-2-26',
+  'Ru-3': 'Ru-3-26',
+  'Kiber-1': 'Kiber 1-25',
+  'Kiber-2': 'Kiber 2-25',
+  'Kiber-3': 'Kiber 3-25',
+  'Kiber-RU': 'Kiber 1-25 (RU)',
+  'RBB-RU': 'RBB 1-25 (RU)',
+  'RBB-UZB': 'RBB 1-25',
+};
+const timetableName = (name) => TIMETABLE_NAMES[name] ?? name.replace('/', '-');
+
 const taken = new Set((await prisma.user.findMany({ select: { username: true } })).map((u) => u.username));
 const created = [];
 let groupsCount = 0;
@@ -64,8 +87,8 @@ for (const vd of VICE_DEANS) {
     for (const name of names) {
       await prisma.group.upsert({
         where: { name },
-        create: { name, course: Number(course), curatorId: user.id },
-        update: { course: Number(course), curatorId: user.id },
+        create: { name, course: Number(course), curatorId: user.id, timetableName: timetableName(name) },
+        update: { course: Number(course), curatorId: user.id, timetableName: timetableName(name) },
       });
       groupsCount++;
     }

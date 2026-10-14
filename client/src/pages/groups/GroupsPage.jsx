@@ -17,7 +17,6 @@ import {
   Tag,
   Tooltip,
   Typography,
-  Upload,
 } from 'antd';
 import {
   DeleteOutlined,
@@ -25,7 +24,6 @@ import {
   EditOutlined,
   EyeOutlined,
   HistoryOutlined,
-  InboxOutlined,
   LinkOutlined,
   MoreOutlined,
   PlusOutlined,
@@ -37,14 +35,13 @@ import { useApi } from '../../lib/useApi.js';
 import { useAuth } from '../../lib/auth.jsx';
 import {
   FILE_ICONS,
-  SCHEDULE_FILE_ACCEPT,
-  SCHEDULE_FILE_MAX_MB,
   fileKind,
   fileUrl,
   formatDate,
   formatSize,
 } from '../../lib/files.jsx';
 import { ErrorAlert, PageHeader } from '../../components/ui.jsx';
+import SendModal from './SendModal.jsx';
 
 const { Text } = Typography;
 
@@ -115,6 +112,11 @@ export default function GroupsPage() {
           <Flex wrap align="center" gap={6}>
             <Text strong>{g.name}</Text>
             {g.course && <Tag>{g.course}-kurs</Tag>}
+            {canManage && !g.timetableName && (
+              <Tooltip title="Tahrirlash orqali Excel jadvalidagi ustunni tanlang — shunda jadvalni avtomatik yaratish mumkin bo'ladi">
+                <Tag color="orange">Jadvalga bog'lanmagan</Tag>
+              </Tooltip>
+            )}
           </Flex>
           {!screens.md && (
             <>
@@ -247,6 +249,7 @@ export default function GroupsPage() {
         <GroupForm
           group={editing}
           curators={data.curators}
+          timetableColumns={data.timetableColumns}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -274,141 +277,6 @@ function LatestFile({ file }) {
         {file.uploadedBy && ` · ${file.uploadedBy.fullName}`}
       </Text>
     </Flex>
-  );
-}
-
-function SendModal({ groupIds, groups, onClose, onSent }) {
-  const [file, setFile] = useState(null);
-  const [selected, setSelected] = useState([]);
-  const [note, setNote] = useState('');
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!groupIds) return;
-    setFile(null);
-    setSelected(groupIds);
-    setNote('');
-    setError(null);
-  }, [groupIds]);
-
-  const courses = useMemo(() => {
-    const map = new Map();
-    for (const g of groups) {
-      const key = g.course ?? 0;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(g);
-    }
-    return [...map].sort(([a], [b]) => (a || 99) - (b || 99));
-  }, [groups]);
-
-  const toggleCourse = (list) => {
-    const ids = list.map((g) => g.id);
-    const all = ids.every((id) => selected.includes(id));
-    setSelected(all ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
-  };
-
-  const submit = async () => {
-    if (!file) return setError(new Error('Faylni tanlang'));
-    if (!selected.length) return setError(new Error('Kamida bitta guruhni tanlang'));
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('groupIds', selected.join(','));
-    fd.append('note', note);
-    setBusy(true);
-    setError(null);
-    try {
-      const d = await api.post('/groups/files', fd);
-      onSent(d.groupsCount);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal
-      open={Boolean(groupIds)}
-      title="Dars jadvalini yuborish"
-      onCancel={onClose}
-      onOk={submit}
-      okText="Yuborish"
-      okButtonProps={{ icon: <SendOutlined /> }}
-      cancelText="Bekor qilish"
-      confirmLoading={busy}
-      destroyOnHidden
-    >
-      <Flex vertical gap={16} style={{ marginTop: 16 }}>
-        <Upload.Dragger
-          accept={SCHEDULE_FILE_ACCEPT}
-          maxCount={1}
-          showUploadList={false}
-          beforeUpload={(f) => {
-            if (f.size > SCHEDULE_FILE_MAX_MB * 1024 * 1024) {
-              setError(new Error(`Fayl hajmi ${SCHEDULE_FILE_MAX_MB} MB dan oshmasligi kerak`));
-            } else {
-              setFile(f);
-              setError(null);
-            }
-            return false;
-          }}
-        >
-          {file ? (
-            <Flex vertical align="center" gap={4} style={{ padding: '0 12px' }}>
-              <span style={{ fontSize: 32 }}>{FILE_ICONS[fileKind(file.type || '')] ?? FILE_ICONS.excel}</span>
-              <Text strong>{file.name}</Text>
-              <Text type="secondary">{formatSize(file.size)} · boshqasini tanlash uchun bosing</Text>
-            </Flex>
-          ) : (
-            <>
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined />
-              </p>
-              <p className="ant-upload-text">Faylni shu yerga tashlang yoki tanlang</p>
-              <p className="ant-upload-hint">Rasm (PNG, JPG), PDF yoki Excel · {SCHEDULE_FILE_MAX_MB} MB gacha</p>
-            </>
-          )}
-        </Upload.Dragger>
-
-        <div>
-          <Text strong>Qaysi guruhlarga</Text>
-          <Flex wrap gap={6} style={{ margin: '8px 0' }}>
-            {courses.map(([course, list]) => {
-              const all = list.every((g) => selected.includes(g.id));
-              return (
-                <Tag.CheckableTag key={course} checked={all} onChange={() => toggleCourse(list)}>
-                  {course ? `${course}-kurs` : 'Kurssiz'} ({list.length})
-                </Tag.CheckableTag>
-              );
-            })}
-          </Flex>
-          <Select
-            mode="multiple"
-            allowClear
-            showSearch={{ optionFilterProp: 'label' }}
-            placeholder="Guruhlarni tanlang"
-            value={selected}
-            onChange={setSelected}
-            style={{ width: '100%' }}
-            maxTagCount="responsive"
-            options={courses.map(([course, list]) => ({
-              label: course ? `${course}-kurs` : 'Kurssiz',
-              options: list.map((g) => ({ value: g.id, label: g.name })),
-            }))}
-          />
-        </div>
-
-        <Input.TextArea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Izoh (ixtiyoriy): masalan, 2-semestr, 20-oktabrdan"
-          maxLength={300}
-          autoSize={{ minRows: 1, maxRows: 3 }}
-        />
-        <ErrorAlert error={error} />
-      </Flex>
-    </Modal>
   );
 }
 
@@ -503,7 +371,7 @@ function HistoryDrawer({ group, canManage, onClose, onChanged }) {
   );
 }
 
-function GroupForm({ group, curators, onClose, onSaved }) {
+function GroupForm({ group, curators, timetableColumns, onClose, onSaved }) {
   const isNew = group && !group.id;
   const [form] = Form.useForm();
   const [error, setError] = useState(null);
@@ -512,12 +380,22 @@ function GroupForm({ group, curators, onClose, onSaved }) {
   useEffect(() => {
     if (!group) return;
     setError(null);
-    form.setFieldsValue({ name: group.name || '', course: group.course ?? null, curatorId: group.curator?.id ?? null });
+    form.setFieldsValue({
+      name: group.name || '',
+      course: group.course ?? null,
+      curatorId: group.curator?.id ?? null,
+      timetableName: group.timetableName ?? null,
+    });
   }, [group, form]);
 
   const submit = async (fields) => {
     // Tozalangan maydon undefined bo'ladi — serverga "olib tashlash" sifatida null yuboramiz
-    const values = { ...fields, course: fields.course ?? null, curatorId: fields.curatorId ?? null };
+    const values = {
+      ...fields,
+      course: fields.course ?? null,
+      curatorId: fields.curatorId ?? null,
+      timetableName: fields.timetableName ?? null,
+    };
     setBusy(true);
     setError(null);
     try {
@@ -548,6 +426,21 @@ function GroupForm({ group, curators, onClose, onSaved }) {
         </Form.Item>
         <Form.Item name="course" label="Kurs">
           <Select allowClear placeholder="Tanlang" options={[1, 2, 3, 4, 5, 6].map((c) => ({ value: c, label: `${c}-kurs` }))} />
+        </Form.Item>
+        <Form.Item
+          name="timetableName"
+          label="Jadvaldagi nomi"
+          extra="Import qilingan Excel jadvalida bu guruh ustuni qanday nomlangan — jadval shu ustundagi darslardan yaratiladi."
+        >
+          <Select
+            allowClear
+            showSearch={{ optionFilterProp: 'label' }}
+            placeholder={timetableColumns.length ? 'Ustunni tanlang' : 'Avval Import orqali umumiy jadvalni yuklang'}
+            options={[...new Set(timetableColumns.map((c) => c.sheet))].map((sheet) => ({
+              label: sheet,
+              options: timetableColumns.filter((c) => c.sheet === sheet).map((c) => ({ value: c.name, label: c.name })),
+            }))}
+          />
         </Form.Item>
         <Form.Item name="curatorId" label="Mas'ul zam dekan" extra="Faqat shu zam dekan guruhga jadval yubora oladi (dekan va admin — barcha guruhlarga).">
           <Select
