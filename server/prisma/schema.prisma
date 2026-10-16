@@ -144,3 +144,17 @@ model ActivityLog {
   @@index([userId, createdAt])
   @@map("activity_logs")
 }
+
+// Telegram orqali havola sifatida ulashiladigan jadval fayli (guruhlarga biriktirilmaydi)
+model SharedFile {
+  id           Int      @id @default(autoincrement())
+  token        String   @unique
+  filename     String
+  mimeType     String   @map("mime_type")
+  size         Int
+  data         Bytes
+  uploadedById Int?     @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("shared_files")
+}

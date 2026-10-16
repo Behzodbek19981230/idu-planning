@@ -37,4 +37,13 @@ router.get('/files/:id', async (req, res) => {
   sendScheduleFile(res, file, req.query.download === '1');
 });
 
+router.get('/shared/:token', async (req, res) => {
+  const file = await prisma.sharedFile.findUnique({
+    where: { token: String(req.params.token) },
+    select: { filename: true, mimeType: true, data: true },
+  });
+  if (!file) return res.status(404).json({ error: 'Fayl topilmadi' });
+  sendScheduleFile(res, file, req.query.download === '1');
+});
+
 export default router;

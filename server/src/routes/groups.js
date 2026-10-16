@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import multer from 'multer';
 import { prisma } from '../db.js';
@@ -209,6 +210,33 @@ router.post('/files', (req, res, next) => {
     select: fileMeta,
   });
   res.status(201).json({ file, groupsCount: ids.length });
+});
+
+/** Faylni havola sifatida ulashish (Telegram uchun): ochiq havola tokeni qaytaradi */
+router.post('/shared', (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err?.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: `Fayl hajmi ${SCHEDULE_FILE_MAX_BYTES / 1024 / 1024} MB dan oshmasligi kerak` });
+    }
+    next(err);
+  });
+}, async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Faylni tanlang' });
+  const filename = decodeFilename(req.file.originalname).slice(0, 200);
+  const mimeType = detectScheduleFileType(filename, req.file.buffer);
+  if (!mimeType) return res.status(400).json({ error: 'Fayl turi qabul qilinmaydi' });
+  const { token } = await prisma.sharedFile.create({
+    data: {
+      token: randomBytes(16).toString('hex'),
+      filename,
+      mimeType,
+      size: req.file.size,
+      data: req.file.buffer,
+      uploadedById: req.user.id,
+    },
+    select: { token: true },
+  });
+  res.status(201).json({ token });
 });
 
 router.delete('/files/:id', async (req, res) => {

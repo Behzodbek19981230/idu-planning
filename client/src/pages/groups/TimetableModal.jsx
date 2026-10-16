@@ -4,7 +4,7 @@ import { DownloadOutlined, SendOutlined } from '@ant-design/icons';
 import { api } from '../../lib/api.js';
 import { useApi } from '../../lib/useApi.js';
 import { EXPORT_FORMATS, generateTimetableFile, saveFile } from '../../lib/exportTimetable.jsx';
-import { NeedsClickError, shareToTelegram } from '../../lib/share.js';
+import { NeedsClickError, shareToTelegram, uploadForLink } from '../../lib/share.js';
 import ExportTimetable from '../../components/ExportTimetable.jsx';
 import { ErrorAlert } from '../../components/ui.jsx';
 
@@ -101,7 +101,11 @@ export default function TimetableModal({ groupIds, groups, onClose, onShared }) 
       if (kind === 'download') {
         items.forEach((i) => saveFile(i.file));
       } else {
-        await openShare({ files: items.map((i) => i.file), text: split ? 'Dars jadvali' : title.trim() || autoTitle });
+        const files = items.map((i) => i.file);
+        const text = split ? 'Dars jadvali' : title.trim() || autoTitle;
+        // PDF — serverga yuklanib, havola sifatida yuboriladi
+        const links = format === 'pdf' ? await Promise.all(files.map(uploadForLink)) : undefined;
+        await openShare({ files, text, links });
       }
     } catch (err) {
       setError(err);
