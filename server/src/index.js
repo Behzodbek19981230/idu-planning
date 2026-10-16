@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
-import { ensureAdmin, ensureSuperadmin } from './db.js';
+import { ensureAdmin, ensureSuperadmin, prisma } from './db.js';
 import authRoutes from './routes/auth.js';
 import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.js';
@@ -69,6 +69,15 @@ try {
   console.error(`[startup] ${err.message}`);
   process.exit(1);
 }
+
+// Telegram uchun yaratilgan havola fayllari 30 kundan keyin o'chiriladi
+const SHARED_FILE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const cleanSharedFiles = () =>
+  prisma.sharedFile
+    .deleteMany({ where: { createdAt: { lt: new Date(Date.now() - SHARED_FILE_TTL_MS) } } })
+    .catch((err) => console.error(`[cleanup] ${err.message}`));
+cleanSharedFiles();
+setInterval(cleanSharedFiles, 6 * 60 * 60 * 1000).unref();
 
 app
   .listen(config.port, config.host, () => {
