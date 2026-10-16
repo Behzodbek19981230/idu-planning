@@ -12,6 +12,13 @@ export class NeedsClickError extends Error {}
  * Qaytaradi: 'shared' | 'cancelled' | 'fallback'
  */
 export async function shareToTelegram({ files, text }) {
+  // Kompyuterdagi tizim "Ulashish" oynasida Telegram odatda chiqmaydi — u yerda faylni yuklab, Telegram ilovasini ochamiz
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!isMobile) {
+    files.forEach(saveFile);
+    window.location.href = `tg://msg?text=${encodeURIComponent(text)}`;
+    return 'fallback';
+  }
   if (navigator.canShare?.({ files })) {
     try {
       await navigator.share({ files, title: text, text });
